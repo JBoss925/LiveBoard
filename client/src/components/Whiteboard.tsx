@@ -142,6 +142,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   return (
     <main className="board-shell">
       <BoardHeader
+        activeUsers={socket.activeUsers}
         canvasName={canvasName}
         connected={socket.connected}
         loading={canvasLoading}

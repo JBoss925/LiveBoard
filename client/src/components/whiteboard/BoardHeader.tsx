@@ -1,6 +1,8 @@
-import type { User } from "../../types";
+import { getPresenceColor } from "../../lib/presence";
+import type { ActiveUser, User } from "../../types";
 
 type BoardHeaderProps = {
+  activeUsers: ActiveUser[];
   canvasName: string;
   connected: boolean;
   loading: boolean;
@@ -11,6 +13,7 @@ type BoardHeaderProps = {
 };
 
 export function BoardHeader({
+  activeUsers,
   canvasName,
   connected,
   loading,
@@ -35,6 +38,7 @@ export function BoardHeader({
           {connected ? "Connected" : "Reconnecting"}
         </span>
         <span>Revision {revision}</span>
+        <PresenceStack users={activeUsers} />
         <button
           aria-label="Share canvas"
           className="icon-button"
@@ -49,5 +53,31 @@ export function BoardHeader({
         <span>{user.username}</span>
       </div>
     </header>
+  );
+}
+
+type PresenceStackProps = {
+  users: ActiveUser[];
+};
+
+function PresenceStack({ users }: PresenceStackProps) {
+  if (users.length === 0) {
+    return null;
+  }
+
+  return (
+    <div aria-label="Current editors" className="presence-stack">
+      {users.slice(0, 5).map((activeUser) => (
+        <span
+          className="presence-avatar"
+          key={activeUser.id}
+          style={{ backgroundColor: getPresenceColor(activeUser.id) }}
+          title={activeUser.username}
+        >
+          {activeUser.username.charAt(0).toUpperCase()}
+        </span>
+      ))}
+      {users.length > 5 ? <span className="presence-more">+{users.length - 5}</span> : null}
+    </div>
   );
 }

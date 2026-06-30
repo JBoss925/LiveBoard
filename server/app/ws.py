@@ -19,15 +19,22 @@ class CanvasRoomManager:
 
     async def connect(self, canvas_id: str, ws: WebSocket, user: dict[str, str]) -> None:
         await ws.accept()
+        was_active = self.has_active_user(canvas_id, user["id"])
         self.rooms[canvas_id].add(ws)
         self.users[ws] = user
+        if not was_active:
+            await self.broadcast(
+                canvas_id,
+                {"type": "presence_join", "user": user},
+                exclude=ws,
+            )
 
     async def disconnect(self, canvas_id: str, ws: WebSocket) -> None:
         self.rooms[canvas_id].discard(ws)
         user = self.users.pop(ws, None)
         if not self.rooms[canvas_id]:
             self.rooms.pop(canvas_id, None)
-        if user is not None:
+        if user is not None and not self.has_active_user(canvas_id, user["id"]):
             await self.broadcast(
                 canvas_id,
                 {"type": "presence_leave", "userId": user["id"]},
@@ -49,8 +56,7 @@ class CanvasRoomManager:
             except (RuntimeError, WebSocketDisconnect):
                 stale.append(client)
         for client in stale:
-            self.rooms[canvas_id].discard(client)
-            self.users.pop(client, None)
+            await self.disconnect(canvas_id, client)
 
     async def remove_user_access(
         self, canvas_id: str, user_id: str, message: str
@@ -80,6 +86,12 @@ class CanvasRoomManager:
                 seen.add(user["id"])
                 users.append(user)
         return users
+
+    def has_active_user(self, canvas_id: str, user_id: str) -> bool:
+        return any(
+            self.users.get(client, {}).get("id") == user_id
+            for client in self.rooms.get(canvas_id, set())
+        )
 
 
 manager = CanvasRoomManager()

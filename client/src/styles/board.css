@@ -25,6 +25,36 @@
   gap: 10px;
 }
 
+.presence-stack {
+  align-items: center;
+  display: flex;
+  margin-left: 2px;
+}
+
+.presence-avatar,
+.presence-more {
+  align-items: center;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  color: var(--surface);
+  display: inline-flex;
+  font-size: 12px;
+  font-weight: 800;
+  height: 30px;
+  justify-content: center;
+  margin-left: -6px;
+  width: 30px;
+}
+
+.presence-avatar:first-child,
+.presence-more:first-child {
+  margin-left: 0;
+}
+
+.presence-more {
+  background: var(--deep-space-blue);
+}
+
 .icon-button {
   align-items: center;
   aspect-ratio: 1;
@@ -147,13 +177,11 @@
 }
 
 .remote-cursor path {
-  fill: var(--deep-space-blue);
   stroke: var(--surface);
   stroke-width: 1;
 }
 
 .remote-cursor text {
-  fill: var(--deep-space-blue);
   font-size: 13px;
   font-weight: 700;
   paint-order: stroke;

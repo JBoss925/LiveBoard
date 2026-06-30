@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CanvasOperation, CanvasState, RemoteCursor } from "../types";
+import type { ActiveUser, CanvasOperation, CanvasState, RemoteCursor } from "../types";
 import { applyOperation } from "../lib/operations";
+import { getPresenceColor, sortActiveUsers } from "../lib/presence";
 import { throttle } from "../lib/throttle";
 
 type SocketStatus = "connecting" | "connected" | "disconnected";
@@ -10,6 +11,7 @@ type SnapshotMessage = {
   canvasId: string;
   revision: number;
   state: CanvasState;
+  users: ActiveUser[];
 };
 
 type AppliedMessage = {
@@ -31,10 +33,16 @@ type PresenceLeaveMessage = {
   userId: string;
 };
 
+type PresenceJoinMessage = {
+  type: "presence_join";
+  user: ActiveUser;
+};
+
 type ServerMessage =
   | SnapshotMessage
   | AppliedMessage
   | CursorMessage
+  | PresenceJoinMessage
   | PresenceLeaveMessage
   | { type: "access_removed"; message: string }
   | { type: "error"; message: string };
@@ -43,6 +51,7 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
   const [status, setStatus] = useState<SocketStatus>("connecting");
   const [state, setState] = useState<CanvasState>({ shapes: [] });
   const [revision, setRevision] = useState(0);
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [accessMessage, setAccessMessage] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -52,6 +61,8 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
   useEffect(() => {
     if (!token) {
       setStatus("disconnected");
+      setActiveUsers([]);
+      setRemoteCursors({});
       return undefined;
     }
 
@@ -78,6 +89,7 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
         if (message.type === "snapshot") {
           setState(message.state);
           setRevision(message.revision);
+          setActiveUsers(sortActiveUsers(message.users));
           pendingOps.current = [];
           seenOpIds.current.clear();
         }
@@ -91,11 +103,13 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
           setState((current) => applyOperation(current, message.op));
         }
         if (message.type === "cursor") {
+          setActiveUsers((current) => upsertActiveUser(current, message.user));
           setRemoteCursors((current) => ({
             ...current,
             [message.user.id]: {
               userId: message.user.id,
               username: message.user.username,
+              color: getPresenceColor(message.user.id),
               x: message.x,
               y: message.y,
               selectedShapeId: message.selectedShapeId,
@@ -103,7 +117,13 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
             },
           }));
         }
+        if (message.type === "presence_join") {
+          setActiveUsers((current) => upsertActiveUser(current, message.user));
+        }
         if (message.type === "presence_leave") {
+          setActiveUsers((current) =>
+            current.filter((activeUser) => activeUser.id !== message.userId),
+          );
           setRemoteCursors((current) => {
             const next = { ...current };
             delete next[message.userId];
@@ -113,6 +133,8 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
         if (message.type === "access_removed") {
           shouldReconnect = false;
           pendingOps.current = [];
+          setActiveUsers([]);
+          setRemoteCursors({});
           setAccessMessage(message.message);
           setStatus("disconnected");
           ws.close(1008);
@@ -126,6 +148,9 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
         setStatus("disconnected");
         if (event.code === 1008) {
           shouldReconnect = false;
+          pendingOps.current = [];
+          setActiveUsers([]);
+          setRemoteCursors({});
           setAccessMessage((current) => current ?? "You no longer have access to this canvas.");
         }
         if (shouldReconnect) {
@@ -197,10 +222,16 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
     status,
     state,
     revision,
+    activeUsers,
     remoteCursors: Object.values(remoteCursors),
     accessMessage,
     setLocalState: setState,
     sendOperation,
     sendCursor,
   };
+}
+
+function upsertActiveUser(users: ActiveUser[], user: ActiveUser): ActiveUser[] {
+  const withoutUser = users.filter((activeUser) => activeUser.id !== user.id);
+  return sortActiveUsers([...withoutUser, user]);
 }

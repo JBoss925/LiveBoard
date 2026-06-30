@@ -72,6 +72,12 @@ export type User = {
   email: string;
 };
 
+export type ActiveUser = {
+  id: string;
+  username: string;
+  email?: string;
+};
+
 export type CanvasSummary = {
   id: string;
   name: string;
@@ -87,6 +93,7 @@ export type CanvasDetail = CanvasSummary & {
 export type RemoteCursor = {
   userId: string;
   username: string;
+  color: string;
   x: number;
   y: number;
   selectedShapeId?: string | null;
