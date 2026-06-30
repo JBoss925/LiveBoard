@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../api";
 import { useCanvasHistory } from "../hooks/useCanvasHistory";
 import { useCanvasSocket } from "../hooks/useCanvasSocket";
 import { useLiveShapeUpdates } from "../hooks/useLiveShapeUpdates";
 import { useWhiteboardInteractions } from "../hooks/useWhiteboardInteractions";
-import { findShape } from "../lib/operations";
+import { findShape, makeOperationId } from "../lib/operations";
 import type { Shape, Tool, User } from "../types";
 import { InvitePanel } from "./InvitePanel";
 import { Toolbar } from "./Toolbar";
@@ -16,6 +16,12 @@ type WhiteboardProps = {
   token: string | null;
   user: User;
   onBack: () => void;
+};
+
+type ContextMenuState = {
+  shapeId: string;
+  x: number;
+  y: number;
 };
 
 export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
@@ -30,6 +36,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const [strokeColor, setStrokeColor] = useState("#1d3557");
   const [fillColor, setFillColor] = useState("#a8dadc");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
   const selectedShape = useMemo(
     () => findShape(socket.state, selectedId),
@@ -67,6 +74,62 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
       setSelectedId(null);
     }
   }, [selectedId, selectedShape]);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return undefined;
+    }
+    const closeMenu = () => setContextMenu(null);
+    window.addEventListener("click", closeMenu);
+    window.addEventListener("blur", closeMenu);
+    return () => {
+      window.removeEventListener("click", closeMenu);
+      window.removeEventListener("blur", closeMenu);
+    };
+  }, [contextMenu]);
+
+  function handleShapeContextMenu(event: MouseEvent<SVGElement>, shape: Shape) {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedId(shape.id);
+    setContextMenu({ shapeId: shape.id, x: event.clientX, y: event.clientY });
+  }
+
+  function reorderShape(shapeId: string, direction: "front" | "forward" | "backward" | "back") {
+    const currentIndex = socket.state.shapes.findIndex((shape) => shape.id === shapeId);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    const lastIndex = socket.state.shapes.length - 1;
+    const nextIndexByDirection = {
+      front: lastIndex,
+      forward: Math.min(currentIndex + 1, lastIndex),
+      backward: Math.max(currentIndex - 1, 0),
+      back: 0,
+    };
+    const nextIndex = nextIndexByDirection[direction];
+    if (nextIndex === currentIndex) {
+      setContextMenu(null);
+      return;
+    }
+
+    history.sendWithHistory({
+      forward: {
+        id: makeOperationId(),
+        kind: "reorder_shape",
+        shapeId,
+        toIndex: nextIndex,
+      },
+      inverse: {
+        id: makeOperationId(),
+        kind: "reorder_shape",
+        shapeId,
+        toIndex: currentIndex,
+      },
+    });
+    setContextMenu(null);
+  }
 
   return (
     <main className="board-shell">
@@ -120,13 +183,63 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
               onPointerMove={interactions.handlePointerMove}
               onPointerUp={interactions.handlePointerUp}
               onShapePointerDown={interactions.handleShapePointerDown}
+              onShapeContextMenu={handleShapeContextMenu}
               onHandlePointerDown={interactions.handleHandlePointerDown}
               onTextDoubleClick={interactions.handleTextDoubleClick}
             />
+            {contextMenu ? (
+              <ShapeContextMenu
+                x={contextMenu.x}
+                y={contextMenu.y}
+                onBringToFront={() => reorderShape(contextMenu.shapeId, "front")}
+                onBringForward={() => reorderShape(contextMenu.shapeId, "forward")}
+                onSendBackward={() => reorderShape(contextMenu.shapeId, "backward")}
+                onSendToBack={() => reorderShape(contextMenu.shapeId, "back")}
+              />
+            ) : null}
           </div>
         </section>
       </div>
       <span hidden>{history.version}</span>
     </main>
+  );
+}
+
+type ShapeContextMenuProps = {
+  x: number;
+  y: number;
+  onBringToFront: () => void;
+  onBringForward: () => void;
+  onSendBackward: () => void;
+  onSendToBack: () => void;
+};
+
+function ShapeContextMenu({
+  x,
+  y,
+  onBringToFront,
+  onBringForward,
+  onSendBackward,
+  onSendToBack,
+}: ShapeContextMenuProps) {
+  return (
+    <div
+      className="shape-context-menu"
+      style={{ left: x, top: y }}
+      onClick={(event) => event.stopPropagation()}
+    >
+      <button onClick={onBringToFront} type="button">
+        Bring to front
+      </button>
+      <button onClick={onBringForward} type="button">
+        Bring forward
+      </button>
+      <button onClick={onSendBackward} type="button">
+        Send backward
+      </button>
+      <button onClick={onSendToBack} type="button">
+        Send to back
+      </button>
+    </div>
   );
 }

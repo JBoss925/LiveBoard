@@ -20,6 +20,7 @@ type CanvasSvgProps = {
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerUp: () => void;
   onShapePointerDown: (event: PointerEvent<SVGElement>, shape: Shape) => void;
+  onShapeContextMenu: (event: MouseEvent<SVGElement>, shape: Shape) => void;
   onHandlePointerDown: (
     event: PointerEvent<SVGElement>,
     handle: ResizeHandle,
@@ -37,6 +38,7 @@ export function CanvasSvg({
   onPointerMove,
   onPointerUp,
   onShapePointerDown,
+  onShapeContextMenu,
   onHandlePointerDown,
   onTextDoubleClick,
 }: CanvasSvgProps) {
@@ -58,6 +60,7 @@ export function CanvasSvg({
           key={shape.id}
           shape={shape}
           onPointerDown={onShapePointerDown}
+          onContextMenu={onShapeContextMenu}
           onDoubleClick={onTextDoubleClick}
         />
       ))}

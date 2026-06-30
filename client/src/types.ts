@@ -58,7 +58,8 @@ export type CanvasState = {
 export type CanvasOperation =
   | { id: string; kind: "create_shape"; shape: Shape }
   | { id: string; kind: "update_shape"; shapeId: string; patch: Partial<Shape> }
-  | { id: string; kind: "delete_shape"; shapeId: string };
+  | { id: string; kind: "delete_shape"; shapeId: string }
+  | { id: string; kind: "reorder_shape"; shapeId: string; toIndex: number };
 
 export type HistoryEntry = {
   forward: CanvasOperation;

@@ -4,16 +4,19 @@ import type { Shape } from "../../types";
 type ShapeRendererProps = {
   shape: Shape;
   onPointerDown: (event: PointerEvent<SVGElement>, shape: Shape) => void;
+  onContextMenu: (event: MouseEvent<SVGElement>, shape: Shape) => void;
   onDoubleClick: (event: MouseEvent<SVGElement>, shape: Shape) => void;
 };
 
 export function ShapeRenderer({
   shape,
   onPointerDown,
+  onContextMenu,
   onDoubleClick,
 }: ShapeRendererProps) {
   const shared = {
     onPointerDown: (event: PointerEvent<SVGElement>) => onPointerDown(event, shape),
+    onContextMenu: (event: MouseEvent<SVGElement>) => onContextMenu(event, shape),
     onDoubleClick: (event: MouseEvent<SVGElement>) => onDoubleClick(event, shape),
     className: "shape",
   };

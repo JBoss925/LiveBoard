@@ -38,4 +38,17 @@ def apply_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]
         next_state["shapes"] = [shape for shape in shapes if shape.get("id") != shape_id]
         return next_state
 
+    if kind == "reorder_shape":
+        to_index = op.get("toIndex")
+        if not isinstance(to_index, int):
+            return next_state
+        for index, shape in enumerate(shapes):
+            if shape.get("id") == shape_id:
+                [moved_shape] = shapes[index : index + 1]
+                del shapes[index]
+                clamped_index = max(0, min(to_index, len(shapes)))
+                shapes.insert(clamped_index, moved_shape)
+                break
+        return next_state
+
     return next_state

@@ -185,3 +185,26 @@
   top: 32px;
   z-index: 1;
 }
+
+.shape-context-menu {
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(29, 53, 87, 0.16);
+  display: grid;
+  min-width: 160px;
+  padding: 4px;
+  position: fixed;
+  z-index: 10;
+}
+
+.shape-context-menu button {
+  border: 0;
+  border-radius: 4px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.shape-context-menu button:hover {
+  background: var(--surface-soft);
+}
