@@ -31,9 +31,9 @@ export function ShapeRenderer({
         width={shape.width}
         height={shape.height}
         fill={shape.fillColor}
-        fillOpacity={shape.fillOpacity}
+        fillOpacity={shape.fillOpacity ?? 1}
         stroke={shape.strokeColor}
-        strokeOpacity={shape.strokeOpacity}
+        strokeOpacity={shape.strokeOpacity ?? 1}
         strokeWidth={shape.strokeWidth}
       />
     );
@@ -49,9 +49,9 @@ export function ShapeRenderer({
         rx={shape.width / 2}
         ry={shape.height / 2}
         fill={shape.fillColor}
-        fillOpacity={shape.fillOpacity}
+        fillOpacity={shape.fillOpacity ?? 1}
         stroke={shape.strokeColor}
-        strokeOpacity={shape.strokeOpacity}
+        strokeOpacity={shape.strokeOpacity ?? 1}
         strokeWidth={shape.strokeWidth}
       />
     );
@@ -67,7 +67,7 @@ export function ShapeRenderer({
         x2={shape.x2}
         y2={shape.y2}
         stroke={shape.strokeColor}
-        strokeOpacity={shape.strokeOpacity}
+        strokeOpacity={shape.strokeOpacity ?? 1}
         strokeWidth={shape.strokeWidth}
         strokeLinecap="round"
       />
@@ -82,16 +82,16 @@ export function ShapeRenderer({
         width={shape.width}
         height={shape.height}
         fill={shape.fillColor}
-        fillOpacity={shape.fillOpacity}
+        fillOpacity={shape.fillOpacity ?? 1}
         stroke={shape.strokeColor}
-        strokeOpacity={shape.strokeOpacity}
+        strokeOpacity={shape.strokeOpacity ?? 1}
         strokeWidth={shape.strokeWidth}
       />
       <text
         x={shape.x + 12}
         y={shape.y + shape.fontSize + 8}
         fill={shape.strokeColor}
-        fillOpacity={shape.strokeOpacity}
+        fillOpacity={shape.strokeOpacity ?? 1}
         fontSize={shape.fontSize}
       >
         {shape.text}

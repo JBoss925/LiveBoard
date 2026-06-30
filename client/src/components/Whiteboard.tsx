@@ -99,6 +99,18 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   }, [selectedId, selectedShape]);
 
   useEffect(() => {
+    if (!selectedShape) {
+      return;
+    }
+    setStrokeColor(selectedShape.strokeColor);
+    setStrokeOpacity(selectedShape.strokeOpacity ?? 1);
+    if (selectedShape.type !== "line") {
+      setFillColor(selectedShape.fillColor);
+      setFillOpacity(selectedShape.fillOpacity ?? 1);
+    }
+  }, [selectedShape]);
+
+  useEffect(() => {
     if (!contextMenu) {
       return undefined;
     }
