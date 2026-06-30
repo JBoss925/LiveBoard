@@ -1,0 +1,134 @@
+import type { PointerEvent } from "react";
+import type { ResizeHandle, Shape } from "../types";
+
+export type Point = { x: number; y: number };
+export type Bounds = { x: number; y: number; width: number; height: number };
+
+export function getSvgPoint(
+  event: PointerEvent<SVGElement>,
+  svgElement: SVGSVGElement,
+): Point {
+  const point = svgElement.createSVGPoint();
+  point.x = event.clientX;
+  point.y = event.clientY;
+  const transformed = point.matrixTransform(svgElement.getScreenCTM()?.inverse());
+  return { x: transformed.x, y: transformed.y };
+}
+
+export function getShapeBounds(shape: Shape): Bounds {
+  if (shape.type === "line") {
+    const x = Math.min(shape.x1, shape.x2);
+    const y = Math.min(shape.y1, shape.y2);
+    return {
+      x,
+      y,
+      width: Math.abs(shape.x2 - shape.x1),
+      height: Math.abs(shape.y2 - shape.y1),
+    };
+  }
+  return {
+    x: shape.x,
+    y: shape.y,
+    width: shape.width,
+    height: shape.height,
+  };
+}
+
+export function hitTestShape(shape: Shape, point: Point): boolean {
+  if (shape.type === "line") {
+    return distanceToSegment(point, { x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }) <= 8;
+  }
+  const bounds = getShapeBounds(shape);
+  return (
+    point.x >= bounds.x &&
+    point.x <= bounds.x + bounds.width &&
+    point.y >= bounds.y &&
+    point.y <= bounds.y + bounds.height
+  );
+}
+
+export function moveShape(shape: Shape, dx: number, dy: number): Shape {
+  if (shape.type === "line") {
+    return {
+      ...shape,
+      x1: shape.x1 + dx,
+      y1: shape.y1 + dy,
+      x2: shape.x2 + dx,
+      y2: shape.y2 + dy,
+      updatedAt: Date.now(),
+    };
+  }
+  return { ...shape, x: shape.x + dx, y: shape.y + dy, updatedAt: Date.now() };
+}
+
+export function resizeShape(
+  shape: Shape,
+  handle: ResizeHandle,
+  startShape: Shape,
+  dx: number,
+  dy: number,
+): Shape {
+  if (startShape.type === "line") {
+    if (handle === "start") {
+      return { ...startShape, x1: startShape.x1 + dx, y1: startShape.y1 + dy, updatedAt: Date.now() };
+    }
+    return { ...startShape, x2: startShape.x2 + dx, y2: startShape.y2 + dy, updatedAt: Date.now() };
+  }
+  if (shape.type === "line") {
+    return shape;
+  }
+
+  let x = startShape.x;
+  let y = startShape.y;
+  let width = startShape.width;
+  let height = startShape.height;
+
+  if (handle.includes("w")) {
+    x = startShape.x + dx;
+    width = startShape.width - dx;
+  }
+  if (handle.includes("e")) {
+    width = startShape.width + dx;
+  }
+  if (handle.includes("n")) {
+    y = startShape.y + dy;
+    height = startShape.height - dy;
+  }
+  if (handle.includes("s")) {
+    height = startShape.height + dy;
+  }
+
+  if (width < 0) {
+    x += width;
+    width = Math.abs(width);
+  }
+  if (height < 0) {
+    y += height;
+    height = Math.abs(height);
+  }
+
+  return { ...startShape, x, y, width, height, updatedAt: Date.now() } as Shape;
+}
+
+export function getChangedFields(before: Shape, after: Shape): Partial<Shape> {
+  const patch: Partial<Shape> = {};
+  for (const key of Object.keys(after) as Array<keyof Shape>) {
+    if (JSON.stringify(before[key]) !== JSON.stringify(after[key])) {
+      (patch as Record<string, unknown>)[key] = after[key];
+    }
+  }
+  return patch;
+}
+
+function distanceToSegment(point: Point, start: Point, end: Point): number {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  if (dx === 0 && dy === 0) {
+    return Math.hypot(point.x - start.x, point.y - start.y);
+  }
+  const t = Math.max(
+    0,
+    Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / (dx * dx + dy * dy)),
+  );
+  return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
+}
