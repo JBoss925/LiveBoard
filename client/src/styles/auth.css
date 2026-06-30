@@ -1,5 +1,8 @@
 .auth-shell {
   align-items: center;
+  background:
+    linear-gradient(135deg, rgba(69, 123, 157, 0.12), rgba(168, 218, 220, 0.28)),
+    var(--honeydew);
   display: flex;
   justify-content: center;
   min-height: 100vh;
@@ -7,8 +10,8 @@
 }
 
 .auth-panel {
-  background: #ffffff;
-  border: 1px solid #d7dde6;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   display: grid;
   gap: 22px;
@@ -18,7 +21,7 @@
 }
 
 .segmented {
-  background: #e9edf3;
+  background: var(--surface-soft);
   border-radius: 7px;
   display: grid;
   gap: 4px;

@@ -34,3 +34,19 @@ export function CanvasList({ canvases, onOpen }: CanvasListProps) {
     </div>
   );
 }
+
+export function CanvasListLoading() {
+  return (
+    <div className="canvas-list skeleton-list" role="status" aria-live="polite">
+      {[0, 1, 2].map((item) => (
+        <div className="canvas-row skeleton-row" key={item}>
+          <span>
+            <span className="skeleton-line skeleton-title" />
+            <span className="skeleton-line skeleton-small" />
+          </span>
+          <span className="skeleton-line skeleton-date" />
+        </div>
+      ))}
+    </div>
+  );
+}

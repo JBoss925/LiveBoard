@@ -3,6 +3,7 @@ import type { User } from "../../types";
 type BoardHeaderProps = {
   canvasName: string;
   connected: boolean;
+  loading: boolean;
   revision: number;
   user: User;
   onBack: () => void;
@@ -11,6 +12,7 @@ type BoardHeaderProps = {
 export function BoardHeader({
   canvasName,
   connected,
+  loading,
   revision,
   user,
   onBack,
@@ -23,7 +25,7 @@ export function BoardHeader({
         </button>
         <div>
           <p className="eyebrow">Canvas</p>
-          <h1>{canvasName}</h1>
+          {loading ? <span className="title-skeleton" /> : <h1>{canvasName}</h1>}
         </div>
       </div>
       <div className="board-meta">

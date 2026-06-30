@@ -9,8 +9,8 @@
 }
 
 .board-header {
-  background: #ffffff;
-  border-bottom: 1px solid #d7dde6;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
   justify-content: space-between;
   padding: 14px 18px;
 }
@@ -27,17 +27,17 @@
 
 .status,
 .board-meta span {
-  background: #ffffff;
-  border: 1px solid #d7dde6;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  color: #3e4a5a;
+  color: var(--deep-space-blue);
   font-size: 13px;
   padding: 7px 10px;
 }
 
 .status.connected {
-  border-color: #98c9aa;
-  color: #1f6b3a;
+  border-color: var(--frosted-blue);
+  color: var(--steel-blue);
 }
 
 .board-layout {
@@ -47,8 +47,8 @@
 }
 
 .toolbar {
-  background: #ffffff;
-  border-right: 1px solid #d7dde6;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
   display: grid;
   align-content: start;
   gap: 18px;
@@ -82,8 +82,8 @@
 
 .invite-panel {
   align-items: end;
-  background: #ffffff;
-  border: 1px solid #d7dde6;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   display: grid;
   gap: 8px;
@@ -98,15 +98,16 @@
 }
 
 .canvas-frame {
-  background: #dfe4ec;
-  border: 1px solid #c2cad6;
+  background: #d8eef0;
+  border: 1px solid var(--border-strong);
   overflow: auto;
   padding: 18px;
+  position: relative;
 }
 
 .whiteboard-canvas {
   background: #ffffff;
-  border: 1px solid #bdc6d2;
+  border: 1px solid var(--border-strong);
   display: block;
 }
 
@@ -117,23 +118,23 @@
 .selection rect {
   fill: transparent;
   pointer-events: none;
-  stroke: #214e7a;
+  stroke: var(--steel-blue);
   stroke-dasharray: 8 5;
   stroke-width: 2;
 }
 
 .selection line {
   pointer-events: none;
-  stroke: #214e7a;
+  stroke: var(--steel-blue);
   stroke-dasharray: 8 5;
   stroke-width: 2;
 }
 
 .selection circle {
   cursor: grab;
-  fill: #ffffff;
+  fill: var(--surface);
   pointer-events: all;
-  stroke: #214e7a;
+  stroke: var(--steel-blue);
   stroke-width: 2;
 }
 
@@ -142,16 +143,45 @@
 }
 
 .remote-cursor path {
-  fill: #214e7a;
-  stroke: #ffffff;
+  fill: var(--deep-space-blue);
+  stroke: var(--surface);
   stroke-width: 1;
 }
 
 .remote-cursor text {
-  fill: #214e7a;
+  fill: var(--deep-space-blue);
   font-size: 13px;
   font-weight: 700;
   paint-order: stroke;
-  stroke: #ffffff;
+  stroke: var(--surface);
   stroke-width: 4px;
+}
+
+.title-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(241, 250, 238, 0.9),
+    rgba(168, 218, 220, 0.55),
+    rgba(241, 250, 238, 0.9)
+  );
+  background-size: 180% 100%;
+  border-radius: 4px;
+  display: block;
+  height: 32px;
+  width: 220px;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+.canvas-loading-banner {
+  background: rgba(241, 250, 238, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--deep-space-blue);
+  font-size: 13px;
+  font-weight: 700;
+  left: 32px;
+  padding: 8px 10px;
+  position: absolute;
+  top: 32px;
+  z-index: 1;
 }

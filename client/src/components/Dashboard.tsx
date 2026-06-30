@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import * as api from "../api";
 import type { CanvasSummary, User } from "../types";
-import { CanvasList } from "./CanvasList";
+import { CanvasList, CanvasListLoading } from "./CanvasList";
 
 type DashboardProps = {
   user: User;
@@ -14,9 +14,11 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   const [name, setName] = useState("Design Review");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [creating, setCreating] = useState(false);
 
   async function loadCanvases() {
     setError("");
+    setLoading(true);
     try {
       setCanvases(await api.listCanvases());
     } catch (err) {
@@ -35,6 +37,8 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
     if (!name.trim()) {
       return;
     }
+    setCreating(true);
+    setError("");
     try {
       const canvas = await api.createCanvas(name.trim());
       setCanvases((current) => [canvas, ...current]);
@@ -42,6 +46,8 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
       onOpenCanvas(canvas.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not create canvas");
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -72,8 +78,8 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
               required
             />
           </label>
-          <button className="primary" type="submit">
-            Create and open
+          <button className="primary" disabled={creating} type="submit">
+            {creating ? "Creating..." : "Create and open"}
           </button>
         </form>
 
@@ -85,7 +91,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
             </button>
           </div>
           {error ? <div className="error-banner">{error}</div> : null}
-          {loading ? <p className="muted">Loading canvases...</p> : null}
+          {loading ? <CanvasListLoading /> : null}
           {!loading ? <CanvasList canvases={canvases} onOpen={onOpenCanvas} /> : null}
         </section>
       </section>

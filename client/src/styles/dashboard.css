@@ -26,10 +26,10 @@
 }
 
 .user-chip {
-  background: #ffffff;
-  border: 1px solid #d7dde6;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  color: #3e4a5a;
+  color: var(--deep-space-blue);
   font-size: 13px;
   padding: 7px 10px;
 }
@@ -43,8 +43,8 @@
 .create-panel,
 .list-panel,
 .empty-state {
-  background: #ffffff;
-  border: 1px solid #d7dde6;
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   display: grid;
   gap: 16px;
@@ -52,7 +52,7 @@
 }
 
 .canvas-list {
-  border: 1px solid #d7dde6;
+  border: 1px solid var(--border);
   border-radius: 8px;
   overflow: hidden;
 }
@@ -60,7 +60,7 @@
 .canvas-row {
   align-items: center;
   border: 0;
-  border-bottom: 1px solid #e1e6ee;
+  border-bottom: 1px solid var(--border);
   border-radius: 0;
   display: flex;
   justify-content: space-between;
@@ -80,6 +80,47 @@
 
 .canvas-row small,
 .canvas-row time {
-  color: #657386;
+  color: var(--muted-ink);
   font-size: 12px;
+}
+
+.skeleton-row {
+  cursor: default;
+}
+
+.skeleton-line {
+  background: linear-gradient(
+    90deg,
+    rgba(241, 250, 238, 0.9),
+    rgba(168, 218, 220, 0.5),
+    rgba(241, 250, 238, 0.9)
+  );
+  background-size: 180% 100%;
+  border-radius: 4px;
+  display: block;
+  height: 12px;
+  animation: shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton-title {
+  height: 16px;
+  width: 180px;
+}
+
+.skeleton-small {
+  width: 84px;
+}
+
+.skeleton-date {
+  width: 150px;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
 }

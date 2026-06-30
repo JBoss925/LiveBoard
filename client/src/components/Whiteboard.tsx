@@ -25,9 +25,10 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const [canvasName, setCanvasName] = useState("Canvas");
+  const [canvasLoading, setCanvasLoading] = useState(true);
   const [tool, setTool] = useState<Tool>("select");
-  const [strokeColor, setStrokeColor] = useState("#1f2937");
-  const [fillColor, setFillColor] = useState("#dbeafe");
+  const [strokeColor, setStrokeColor] = useState("#1d3557");
+  const [fillColor, setFillColor] = useState("#a8dadc");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selectedShape = useMemo(
@@ -53,10 +54,12 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   });
 
   useEffect(() => {
+    setCanvasLoading(true);
     api
       .getCanvas(canvasId)
       .then((canvas) => setCanvasName(canvas.name))
-      .catch(() => setCanvasName("Canvas"));
+      .catch(() => setCanvasName("Canvas"))
+      .finally(() => setCanvasLoading(false));
   }, [canvasId]);
 
   useEffect(() => {
@@ -70,6 +73,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
       <BoardHeader
         canvasName={canvasName}
         connected={socket.connected}
+        loading={canvasLoading}
         revision={socket.revision}
         user={user}
         onBack={onBack}
@@ -102,6 +106,11 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
         <section className="canvas-stage">
           <InvitePanel canvasId={canvasId} />
           <div className="canvas-frame">
+            {!socket.connected ? (
+              <div className="canvas-loading-banner" role="status">
+                Syncing live canvas...
+              </div>
+            ) : null}
             <CanvasSvg
               canvasState={socket.state}
               remoteCursors={socket.remoteCursors}

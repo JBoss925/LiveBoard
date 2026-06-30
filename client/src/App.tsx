@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "./api";
 import { AuthScreen } from "./components/AuthScreen";
 import { Dashboard } from "./components/Dashboard";
+import { LoadingState } from "./components/LoadingState";
 import { Whiteboard } from "./components/Whiteboard";
 import type { User } from "./types";
 
@@ -41,7 +42,15 @@ export default function App() {
   }
 
   if (screen.name === "loading") {
-    return <main className="loading-screen">Loading whiteboard...</main>;
+    return (
+      <main className="loading-screen">
+        <LoadingState
+          fullScreen
+          title="Opening workspace"
+          message="Checking your session before loading your canvases."
+        />
+      </main>
+    );
   }
 
   if (screen.name === "auth" || !user) {
