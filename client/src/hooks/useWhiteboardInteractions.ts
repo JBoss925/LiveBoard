@@ -45,6 +45,7 @@ type UseWhiteboardInteractionsOptions = {
   setTool: (tool: Tool) => void;
   strokeColor: string;
   strokeOpacity: number;
+  strokeWidth: number;
   svgRef: RefObject<SVGSVGElement | null>;
   tool: Tool;
   userId: string;
@@ -65,6 +66,7 @@ export function useWhiteboardInteractions({
   setTool,
   strokeColor,
   strokeOpacity,
+  strokeWidth,
   svgRef,
   tool,
   userId,
@@ -139,6 +141,7 @@ export function useWhiteboardInteractions({
         fillColor,
         strokeOpacity,
         fillOpacity,
+        strokeWidth,
         createdBy: userId,
       });
       finalizeCreate(shape);
@@ -151,6 +154,7 @@ export function useWhiteboardInteractions({
       fillColor,
       strokeOpacity,
       fillOpacity,
+      strokeWidth,
       createdBy: userId,
     });
     interaction.current = { mode: "draw", tool, start: point, draft };

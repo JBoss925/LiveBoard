@@ -6,6 +6,7 @@ type ShapeDefaults = {
   fillColor: string;
   strokeOpacity: number;
   fillOpacity: number;
+  strokeWidth: number;
   createdBy: string;
 };
 
@@ -20,7 +21,7 @@ export function createBaseShape(
     fillColor: defaults.fillColor,
     strokeOpacity: defaults.strokeOpacity,
     fillOpacity: defaults.fillOpacity,
-    strokeWidth: 2,
+    strokeWidth: defaults.strokeWidth,
     createdBy: defaults.createdBy,
     updatedAt: Date.now(),
   };

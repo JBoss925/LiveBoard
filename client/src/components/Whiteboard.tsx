@@ -48,6 +48,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const [strokeOpacity, setStrokeOpacity] = useState(1);
   const [fillOpacity, setFillOpacity] = useState(1);
   const [textOpacity, setTextOpacity] = useState(1);
+  const [strokeWidth, setStrokeWidth] = useState(2);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -71,6 +72,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     setTool,
     strokeColor,
     strokeOpacity,
+    strokeWidth,
     svgRef,
     tool,
     userId: user.id,
@@ -106,6 +108,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     }
     setStrokeColor(selectedShape.strokeColor);
     setStrokeOpacity(selectedShape.strokeOpacity ?? 1);
+    setStrokeWidth(selectedShape.strokeWidth);
     if (selectedShape.type !== "line") {
       setFillColor(selectedShape.fillColor);
       setFillOpacity(selectedShape.fillOpacity ?? 1);
@@ -234,6 +237,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           strokeOpacity={strokeOpacity}
           fillOpacity={fillOpacity}
           textOpacity={textOpacity}
+          strokeWidth={strokeWidth}
           canUndo={history.canUndo}
           canRedo={history.canRedo}
           hasSelection={Boolean(selectedShape)}
@@ -264,6 +268,9 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           onTextOpacityChange={(opacity) => {
             setTextOpacity(opacity);
           }}
+          onStrokeWidthChange={(width) => {
+            setStrokeWidth(width);
+          }}
           onStrokeOpacityCommit={(opacity) => {
             interactions.updateSelectedColor({ strokeOpacity: opacity } as Partial<Shape>);
           }}
@@ -276,6 +283,9 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
             if (selectedShape?.type === "text") {
               interactions.updateSelectedColor({ textOpacity: opacity } as Partial<Shape>);
             }
+          }}
+          onStrokeWidthCommit={(width) => {
+            interactions.updateSelectedColor({ strokeWidth: width } as Partial<Shape>);
           }}
           onDelete={interactions.deleteSelectedShape}
           onUndo={history.undo}

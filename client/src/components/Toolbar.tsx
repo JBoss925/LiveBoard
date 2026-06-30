@@ -8,6 +8,7 @@ type ToolbarProps = {
   strokeOpacity: number;
   fillOpacity: number;
   textOpacity: number;
+  strokeWidth: number;
   canUndo: boolean;
   canRedo: boolean;
   hasSelection: boolean;
@@ -19,9 +20,11 @@ type ToolbarProps = {
   onStrokeOpacityChange: (opacity: number) => void;
   onFillOpacityChange: (opacity: number) => void;
   onTextOpacityChange: (opacity: number) => void;
+  onStrokeWidthChange: (width: number) => void;
   onStrokeOpacityCommit: (opacity: number) => void;
   onFillOpacityCommit: (opacity: number) => void;
   onTextOpacityCommit: (opacity: number) => void;
+  onStrokeWidthCommit: (width: number) => void;
   onDelete: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -43,6 +46,7 @@ export function Toolbar({
   strokeOpacity,
   fillOpacity,
   textOpacity,
+  strokeWidth,
   canUndo,
   canRedo,
   hasSelection,
@@ -54,9 +58,11 @@ export function Toolbar({
   onStrokeOpacityChange,
   onFillOpacityChange,
   onTextOpacityChange,
+  onStrokeWidthChange,
   onStrokeOpacityCommit,
   onFillOpacityCommit,
   onTextOpacityCommit,
+  onStrokeWidthCommit,
   onDelete,
   onUndo,
   onRedo,
@@ -90,6 +96,11 @@ export function Toolbar({
             value={strokeOpacity}
             onChange={onStrokeOpacityChange}
             onCommit={onStrokeOpacityCommit}
+          />
+          <StrokeWidthSlider
+            value={strokeWidth}
+            onChange={onStrokeWidthChange}
+            onCommit={onStrokeWidthCommit}
           />
         </label>
         <label title="Fill color">
@@ -136,6 +147,38 @@ export function Toolbar({
         </button>
       </div>
     </aside>
+  );
+}
+
+type StrokeWidthSliderProps = {
+  value: number;
+  onChange: (width: number) => void;
+  onCommit: (width: number) => void;
+};
+
+function StrokeWidthSlider({ value, onChange, onCommit }: StrokeWidthSliderProps) {
+  const roundedValue = Math.round(value);
+  const commitCurrentValue = (event: { currentTarget: HTMLInputElement }) => {
+    onCommit(Number(event.currentTarget.value));
+  };
+
+  return (
+    <div className="alpha-control">
+      <span>
+        Stroke width
+        <strong>{roundedValue}px</strong>
+      </span>
+      <input
+        aria-label="Stroke width"
+        type="range"
+        min="0"
+        max="16"
+        value={roundedValue}
+        onChange={(event) => onChange(Number(event.target.value))}
+        onKeyUp={commitCurrentValue}
+        onPointerUp={commitCurrentValue}
+      />
+    </div>
   );
 }
 
