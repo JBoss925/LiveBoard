@@ -3,17 +3,19 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
-from app.db import close_pool, get_pool
+from app.db import close_pool, get_pool, init_db
+from app.routes_auth import router as auth_router
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    await get_pool()
+    await init_db()
     yield
     await close_pool()
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(auth_router)
 
 
 @app.get("/health")
