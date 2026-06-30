@@ -78,7 +78,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
               required
             />
           </label>
-          <button className="primary" disabled={creating} type="submit">
+          <button className="primary create-submit" disabled={creating} type="submit">
             {creating ? "Creating..." : "Create and open"}
           </button>
         </form>
