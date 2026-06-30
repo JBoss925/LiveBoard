@@ -10,6 +10,8 @@ export type BaseShape = {
   type: ShapeType;
   strokeColor: string;
   fillColor: string;
+  strokeOpacity: number;
+  fillOpacity: number;
   strokeWidth: number;
   createdBy: string;
   updatedAt: number;

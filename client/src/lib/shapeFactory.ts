@@ -4,6 +4,8 @@ import type { Shape, Tool } from "../types";
 type ShapeDefaults = {
   strokeColor: string;
   fillColor: string;
+  strokeOpacity: number;
+  fillOpacity: number;
   createdBy: string;
 };
 
@@ -16,6 +18,8 @@ export function createBaseShape(
     id: crypto.randomUUID(),
     strokeColor: defaults.strokeColor,
     fillColor: defaults.fillColor,
+    strokeOpacity: defaults.strokeOpacity,
+    fillOpacity: defaults.fillOpacity,
     strokeWidth: 2,
     createdBy: defaults.createdBy,
     updatedAt: Date.now(),

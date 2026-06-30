@@ -44,6 +44,8 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const [tool, setTool] = useState<Tool>("select");
   const [strokeColor, setStrokeColor] = useState("#1d3557");
   const [fillColor, setFillColor] = useState("#a8dadc");
+  const [strokeOpacity, setStrokeOpacity] = useState(1);
+  const [fillOpacity, setFillOpacity] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -57,6 +59,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
 
   const interactions = useWhiteboardInteractions({
     fillColor,
+    fillOpacity,
     history,
     liveUpdates,
     selectedId,
@@ -65,6 +68,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     setSelectedId,
     setTool,
     strokeColor,
+    strokeOpacity,
     svgRef,
     tool,
     userId: user.id,
@@ -208,6 +212,8 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           tool={tool}
           strokeColor={strokeColor}
           fillColor={fillColor}
+          strokeOpacity={strokeOpacity}
+          fillOpacity={fillOpacity}
           canUndo={history.canUndo}
           canRedo={history.canRedo}
           hasSelection={Boolean(selectedShape)}
@@ -220,6 +226,20 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
             setFillColor(color);
             if (selectedShape?.type !== "line") {
               interactions.updateSelectedColor({ fillColor: color } as Partial<Shape>);
+            }
+          }}
+          onStrokeOpacityChange={(opacity) => {
+            setStrokeOpacity(opacity);
+          }}
+          onFillOpacityChange={(opacity) => {
+            setFillOpacity(opacity);
+          }}
+          onStrokeOpacityCommit={(opacity) => {
+            interactions.updateSelectedColor({ strokeOpacity: opacity } as Partial<Shape>);
+          }}
+          onFillOpacityCommit={(opacity) => {
+            if (selectedShape?.type !== "line") {
+              interactions.updateSelectedColor({ fillOpacity: opacity } as Partial<Shape>);
             }
           }}
           onDelete={interactions.deleteSelectedShape}

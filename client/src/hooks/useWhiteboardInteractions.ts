@@ -35,6 +35,7 @@ type LiveUpdateApi = {
 
 type UseWhiteboardInteractionsOptions = {
   fillColor: string;
+  fillOpacity: number;
   history: CanvasHistoryApi;
   liveUpdates: LiveUpdateApi;
   selectedId: string | null;
@@ -43,6 +44,7 @@ type UseWhiteboardInteractionsOptions = {
   setSelectedId: (shapeId: string | null) => void;
   setTool: (tool: Tool) => void;
   strokeColor: string;
+  strokeOpacity: number;
   svgRef: RefObject<SVGSVGElement | null>;
   tool: Tool;
   userId: string;
@@ -53,6 +55,7 @@ type UseWhiteboardInteractionsOptions = {
 
 export function useWhiteboardInteractions({
   fillColor,
+  fillOpacity,
   history,
   liveUpdates,
   selectedId,
@@ -61,6 +64,7 @@ export function useWhiteboardInteractions({
   setSelectedId,
   setTool,
   strokeColor,
+  strokeOpacity,
   svgRef,
   tool,
   userId,
@@ -133,6 +137,8 @@ export function useWhiteboardInteractions({
       const shape = createBaseShape("text", point, {
         strokeColor,
         fillColor,
+        strokeOpacity,
+        fillOpacity,
         createdBy: userId,
       });
       finalizeCreate(shape);
@@ -140,7 +146,13 @@ export function useWhiteboardInteractions({
       return;
     }
 
-    const draft = createBaseShape(tool, point, { strokeColor, fillColor, createdBy: userId });
+    const draft = createBaseShape(tool, point, {
+      strokeColor,
+      fillColor,
+      strokeOpacity,
+      fillOpacity,
+      createdBy: userId,
+    });
     interaction.current = { mode: "draw", tool, start: point, draft };
     applyLocal({ id: makeOperationId(), kind: "create_shape", shape: draft });
   }
