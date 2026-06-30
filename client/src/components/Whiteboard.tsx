@@ -215,6 +215,10 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
                 onBringForward={() => reorderShape(contextMenu.shapeId, "forward")}
                 onSendBackward={() => reorderShape(contextMenu.shapeId, "backward")}
                 onSendToBack={() => reorderShape(contextMenu.shapeId, "back")}
+                onDelete={() => {
+                  interactions.deleteSelectedShape();
+                  setContextMenu(null);
+                }}
               />
             ) : null}
           </div>
@@ -240,6 +244,7 @@ type ShapeContextMenuProps = {
   onBringForward: () => void;
   onSendBackward: () => void;
   onSendToBack: () => void;
+  onDelete: () => void;
 };
 
 function ShapeContextMenu({
@@ -249,6 +254,7 @@ function ShapeContextMenu({
   onBringForward,
   onSendBackward,
   onSendToBack,
+  onDelete,
 }: ShapeContextMenuProps) {
   return (
     <div
@@ -267,6 +273,9 @@ function ShapeContextMenu({
       </button>
       <button onClick={onSendToBack} type="button">
         Send to back
+      </button>
+      <button className="danger" onClick={onDelete} type="button">
+        Delete
       </button>
     </div>
   );

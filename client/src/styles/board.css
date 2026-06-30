@@ -238,6 +238,10 @@
   background: var(--surface-soft);
 }
 
+.shape-context-menu button.danger {
+  color: var(--strawberry-red);
+}
+
 .modal-backdrop {
   align-items: center;
   background: rgba(29, 53, 87, 0.42);
