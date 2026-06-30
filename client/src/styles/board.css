@@ -1,0 +1,157 @@
+.board-shell {
+  min-height: 100vh;
+}
+
+.board-header,
+.board-meta {
+  align-items: center;
+  display: flex;
+}
+
+.board-header {
+  background: #ffffff;
+  border-bottom: 1px solid #d7dde6;
+  justify-content: space-between;
+  padding: 14px 18px;
+}
+
+.board-header > div:first-child {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
+
+.board-meta {
+  gap: 10px;
+}
+
+.status,
+.board-meta span {
+  background: #ffffff;
+  border: 1px solid #d7dde6;
+  border-radius: 999px;
+  color: #3e4a5a;
+  font-size: 13px;
+  padding: 7px 10px;
+}
+
+.status.connected {
+  border-color: #98c9aa;
+  color: #1f6b3a;
+}
+
+.board-layout {
+  display: grid;
+  grid-template-columns: 164px 1fr;
+  min-height: calc(100vh - 77px);
+}
+
+.toolbar {
+  background: #ffffff;
+  border-right: 1px solid #d7dde6;
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 14px;
+}
+
+.tool-group {
+  display: grid;
+  gap: 8px;
+}
+
+.tool-group button {
+  width: 100%;
+}
+
+.color-group label {
+  font-size: 12px;
+}
+
+.color-group input {
+  height: 38px;
+  padding: 3px;
+}
+
+.canvas-stage {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-width: 0;
+  padding: 14px;
+}
+
+.invite-panel {
+  align-items: end;
+  background: #ffffff;
+  border: 1px solid #d7dde6;
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px;
+}
+
+.inline-form {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(240px, 360px) auto;
+}
+
+.canvas-frame {
+  background: #dfe4ec;
+  border: 1px solid #c2cad6;
+  overflow: auto;
+  padding: 18px;
+}
+
+.whiteboard-canvas {
+  background: #ffffff;
+  border: 1px solid #bdc6d2;
+  display: block;
+}
+
+.shape {
+  cursor: move;
+}
+
+.selection rect {
+  fill: transparent;
+  pointer-events: none;
+  stroke: #214e7a;
+  stroke-dasharray: 8 5;
+  stroke-width: 2;
+}
+
+.selection line {
+  pointer-events: none;
+  stroke: #214e7a;
+  stroke-dasharray: 8 5;
+  stroke-width: 2;
+}
+
+.selection circle {
+  cursor: grab;
+  fill: #ffffff;
+  pointer-events: all;
+  stroke: #214e7a;
+  stroke-width: 2;
+}
+
+.remote-cursor {
+  pointer-events: none;
+}
+
+.remote-cursor path {
+  fill: #214e7a;
+  stroke: #ffffff;
+  stroke-width: 1;
+}
+
+.remote-cursor text {
+  fill: #214e7a;
+  font-size: 13px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 4px;
+}

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import * as api from "./api";
 import { AuthScreen } from "./components/AuthScreen";
 import { Dashboard } from "./components/Dashboard";
+import { Whiteboard } from "./components/Whiteboard";
 import type { User } from "./types";
 
 type Screen =
@@ -56,9 +57,12 @@ export default function App() {
 
   if (screen.name === "canvas") {
     return (
-      <main className="loading-screen">
-        Canvas {screen.canvasId} is loading...
-      </main>
+      <Whiteboard
+        canvasId={screen.canvasId}
+        token={api.getToken()}
+        user={user}
+        onBack={() => setScreen({ name: "dashboard" })}
+      />
     );
   }
 
