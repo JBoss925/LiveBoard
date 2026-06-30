@@ -5,6 +5,7 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 
 from app.db import close_pool, get_pool, init_db
 from app.routes_auth import router as auth_router
+from app.routes_canvases import router as canvases_router
 
 
 @asynccontextmanager
@@ -16,6 +17,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router)
+app.include_router(canvases_router)
 
 
 @app.get("/health")

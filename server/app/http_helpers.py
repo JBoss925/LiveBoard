@@ -1,8 +1,20 @@
+import json
+from typing import Any
+
 import asyncpg
 from fastapi import HTTPException, status
 
 from app.db import get_pool
 from app.schemas import CanvasSummary, UserOut
+
+
+def decode_state(value: Any) -> dict[str, Any]:
+    """Normalize asyncpg JSON/JSONB values into the canvas state shape."""
+    if isinstance(value, str):
+        value = json.loads(value)
+    if isinstance(value, dict) and isinstance(value.get("shapes"), list):
+        return value
+    return {"shapes": []}
 
 
 def user_out(row: asyncpg.Record) -> UserOut:
