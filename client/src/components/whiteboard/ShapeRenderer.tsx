@@ -90,8 +90,8 @@ export function ShapeRenderer({
       <text
         x={shape.x + 12}
         y={shape.y + shape.fontSize + 8}
-        fill={shape.strokeColor}
-        fillOpacity={shape.strokeOpacity ?? 1}
+        fill={shape.textColor ?? shape.strokeColor}
+        fillOpacity={shape.textOpacity ?? shape.strokeOpacity ?? 1}
         fontSize={shape.fontSize}
       >
         {shape.text}

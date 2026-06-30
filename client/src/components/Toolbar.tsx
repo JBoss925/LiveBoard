@@ -4,18 +4,24 @@ type ToolbarProps = {
   tool: Tool;
   strokeColor: string;
   fillColor: string;
+  textColor: string;
   strokeOpacity: number;
   fillOpacity: number;
+  textOpacity: number;
   canUndo: boolean;
   canRedo: boolean;
   hasSelection: boolean;
+  showTextControls: boolean;
   onToolChange: (tool: Tool) => void;
   onStrokeColorChange: (color: string) => void;
   onFillColorChange: (color: string) => void;
+  onTextColorChange: (color: string) => void;
   onStrokeOpacityChange: (opacity: number) => void;
   onFillOpacityChange: (opacity: number) => void;
+  onTextOpacityChange: (opacity: number) => void;
   onStrokeOpacityCommit: (opacity: number) => void;
   onFillOpacityCommit: (opacity: number) => void;
+  onTextOpacityCommit: (opacity: number) => void;
   onDelete: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -33,18 +39,24 @@ export function Toolbar({
   tool,
   strokeColor,
   fillColor,
+  textColor,
   strokeOpacity,
   fillOpacity,
+  textOpacity,
   canUndo,
   canRedo,
   hasSelection,
+  showTextControls,
   onToolChange,
   onStrokeColorChange,
   onFillColorChange,
+  onTextColorChange,
   onStrokeOpacityChange,
   onFillOpacityChange,
+  onTextOpacityChange,
   onStrokeOpacityCommit,
   onFillOpacityCommit,
+  onTextOpacityCommit,
   onDelete,
   onUndo,
   onRedo,
@@ -94,6 +106,22 @@ export function Toolbar({
             onCommit={onFillOpacityCommit}
           />
         </label>
+        {showTextControls ? (
+          <label title="Text color">
+            Text
+            <input
+              type="color"
+              value={textColor}
+              onChange={(event) => onTextColorChange(event.target.value)}
+            />
+            <AlphaSlider
+              label="Text opacity"
+              value={textOpacity}
+              onChange={onTextOpacityChange}
+              onCommit={onTextOpacityCommit}
+            />
+          </label>
+        ) : null}
       </div>
 
       <div className="tool-group">

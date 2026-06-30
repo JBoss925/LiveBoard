@@ -45,6 +45,8 @@ export function createBaseShape(
       width: 220,
       height: 56,
       text: "Text",
+      textColor: defaults.strokeColor,
+      textOpacity: defaults.strokeOpacity,
       fontSize: 20,
     };
   }

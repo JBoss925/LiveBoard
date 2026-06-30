@@ -44,8 +44,10 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const [tool, setTool] = useState<Tool>("select");
   const [strokeColor, setStrokeColor] = useState("#1d3557");
   const [fillColor, setFillColor] = useState("#a8dadc");
+  const [textColor, setTextColor] = useState("#1d3557");
   const [strokeOpacity, setStrokeOpacity] = useState(1);
   const [fillOpacity, setFillOpacity] = useState(1);
+  const [textOpacity, setTextOpacity] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -107,6 +109,10 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     if (selectedShape.type !== "line") {
       setFillColor(selectedShape.fillColor);
       setFillOpacity(selectedShape.fillOpacity ?? 1);
+    }
+    if (selectedShape.type === "text") {
+      setTextColor(selectedShape.textColor ?? selectedShape.strokeColor);
+      setTextOpacity(selectedShape.textOpacity ?? selectedShape.strokeOpacity ?? 1);
     }
   }, [selectedShape]);
 
@@ -224,11 +230,14 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           tool={tool}
           strokeColor={strokeColor}
           fillColor={fillColor}
+          textColor={textColor}
           strokeOpacity={strokeOpacity}
           fillOpacity={fillOpacity}
+          textOpacity={textOpacity}
           canUndo={history.canUndo}
           canRedo={history.canRedo}
           hasSelection={Boolean(selectedShape)}
+          showTextControls={selectedShape?.type === "text"}
           onToolChange={setTool}
           onStrokeColorChange={(color) => {
             setStrokeColor(color);
@@ -240,11 +249,20 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
               interactions.updateSelectedColor({ fillColor: color } as Partial<Shape>);
             }
           }}
+          onTextColorChange={(color) => {
+            setTextColor(color);
+            if (selectedShape?.type === "text") {
+              interactions.updateSelectedColor({ textColor: color } as Partial<Shape>);
+            }
+          }}
           onStrokeOpacityChange={(opacity) => {
             setStrokeOpacity(opacity);
           }}
           onFillOpacityChange={(opacity) => {
             setFillOpacity(opacity);
+          }}
+          onTextOpacityChange={(opacity) => {
+            setTextOpacity(opacity);
           }}
           onStrokeOpacityCommit={(opacity) => {
             interactions.updateSelectedColor({ strokeOpacity: opacity } as Partial<Shape>);
@@ -252,6 +270,11 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           onFillOpacityCommit={(opacity) => {
             if (selectedShape?.type !== "line") {
               interactions.updateSelectedColor({ fillOpacity: opacity } as Partial<Shape>);
+            }
+          }}
+          onTextOpacityCommit={(opacity) => {
+            if (selectedShape?.type === "text") {
+              interactions.updateSelectedColor({ textOpacity: opacity } as Partial<Shape>);
             }
           }}
           onDelete={interactions.deleteSelectedShape}
@@ -384,7 +407,8 @@ function InlineTextEditor({
         ref={textareaRef}
         className="inline-text-editor"
         style={{
-          color: shape.strokeColor,
+          color: shape.textColor ?? shape.strokeColor,
+          opacity: shape.textOpacity ?? shape.strokeOpacity ?? 1,
           fontSize: shape.fontSize,
         }}
         value={value}

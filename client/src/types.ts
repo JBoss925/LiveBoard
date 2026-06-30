@@ -48,6 +48,8 @@ export type TextShape = BaseShape & {
   width: number;
   height: number;
   text: string;
+  textColor: string;
+  textOpacity: number;
   fontSize: number;
 };
 
