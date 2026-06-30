@@ -9,6 +9,7 @@ type ToolbarProps = {
   fillOpacity: number;
   textOpacity: number;
   strokeWidth: number;
+  textSize: number;
   canUndo: boolean;
   canRedo: boolean;
   hasSelection: boolean;
@@ -21,10 +22,12 @@ type ToolbarProps = {
   onFillOpacityChange: (opacity: number) => void;
   onTextOpacityChange: (opacity: number) => void;
   onStrokeWidthChange: (width: number) => void;
+  onTextSizeChange: (size: number) => void;
   onStrokeOpacityCommit: (opacity: number) => void;
   onFillOpacityCommit: (opacity: number) => void;
   onTextOpacityCommit: (opacity: number) => void;
   onStrokeWidthCommit: (width: number) => void;
+  onTextSizeCommit: (size: number) => void;
   onDelete: () => void;
   onUndo: () => void;
   onRedo: () => void;
@@ -47,6 +50,7 @@ export function Toolbar({
   fillOpacity,
   textOpacity,
   strokeWidth,
+  textSize,
   canUndo,
   canRedo,
   hasSelection,
@@ -59,10 +63,12 @@ export function Toolbar({
   onFillOpacityChange,
   onTextOpacityChange,
   onStrokeWidthChange,
+  onTextSizeChange,
   onStrokeOpacityCommit,
   onFillOpacityCommit,
   onTextOpacityCommit,
   onStrokeWidthCommit,
+  onTextSizeCommit,
   onDelete,
   onUndo,
   onRedo,
@@ -131,6 +137,11 @@ export function Toolbar({
               onChange={onTextOpacityChange}
               onCommit={onTextOpacityCommit}
             />
+            <TextSizeSlider
+              value={textSize}
+              onChange={onTextSizeChange}
+              onCommit={onTextSizeCommit}
+            />
           </label>
         ) : null}
       </div>
@@ -147,6 +158,38 @@ export function Toolbar({
         </button>
       </div>
     </aside>
+  );
+}
+
+type TextSizeSliderProps = {
+  value: number;
+  onChange: (size: number) => void;
+  onCommit: (size: number) => void;
+};
+
+function TextSizeSlider({ value, onChange, onCommit }: TextSizeSliderProps) {
+  const roundedValue = Math.round(value);
+  const commitCurrentValue = (event: { currentTarget: HTMLInputElement }) => {
+    onCommit(Number(event.currentTarget.value));
+  };
+
+  return (
+    <div className="alpha-control">
+      <span>
+        Text size
+        <strong>{roundedValue}px</strong>
+      </span>
+      <input
+        aria-label="Text size"
+        type="range"
+        min="8"
+        max="72"
+        value={roundedValue}
+        onChange={(event) => onChange(Number(event.target.value))}
+        onKeyUp={commitCurrentValue}
+        onPointerUp={commitCurrentValue}
+      />
+    </div>
   );
 }
 

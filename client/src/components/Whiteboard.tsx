@@ -49,6 +49,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const [fillOpacity, setFillOpacity] = useState(1);
   const [textOpacity, setTextOpacity] = useState(1);
   const [strokeWidth, setStrokeWidth] = useState(2);
+  const [textSize, setTextSize] = useState(20);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
@@ -116,6 +117,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     if (selectedShape.type === "text") {
       setTextColor(selectedShape.textColor ?? selectedShape.strokeColor);
       setTextOpacity(selectedShape.textOpacity ?? selectedShape.strokeOpacity ?? 1);
+      setTextSize(selectedShape.fontSize);
     }
   }, [selectedShape]);
 
@@ -238,6 +240,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           fillOpacity={fillOpacity}
           textOpacity={textOpacity}
           strokeWidth={strokeWidth}
+          textSize={textSize}
           canUndo={history.canUndo}
           canRedo={history.canRedo}
           hasSelection={Boolean(selectedShape)}
@@ -271,6 +274,9 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           onStrokeWidthChange={(width) => {
             setStrokeWidth(width);
           }}
+          onTextSizeChange={(size) => {
+            setTextSize(size);
+          }}
           onStrokeOpacityCommit={(opacity) => {
             interactions.updateSelectedColor({ strokeOpacity: opacity } as Partial<Shape>);
           }}
@@ -286,6 +292,11 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           }}
           onStrokeWidthCommit={(width) => {
             interactions.updateSelectedColor({ strokeWidth: width } as Partial<Shape>);
+          }}
+          onTextSizeCommit={(size) => {
+            if (selectedShape?.type === "text") {
+              interactions.updateSelectedColor({ fontSize: size } as Partial<Shape>);
+            }
           }}
           onDelete={interactions.deleteSelectedShape}
           onUndo={history.undo}
