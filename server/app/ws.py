@@ -52,6 +52,25 @@ class CanvasRoomManager:
             self.rooms[canvas_id].discard(client)
             self.users.pop(client, None)
 
+    async def remove_user_access(
+        self, canvas_id: str, user_id: str, message: str
+    ) -> None:
+        """Notify and disconnect every live socket for a user removed from a canvas."""
+        removed_clients = [
+            client
+            for client in list(self.rooms.get(canvas_id, set()))
+            if self.users.get(client, {}).get("id") == user_id
+        ]
+        for client in removed_clients:
+            try:
+                if client.client_state == WebSocketState.CONNECTED:
+                    await client.send_json({"type": "access_removed", "message": message})
+                    await client.close(code=1008)
+            except (RuntimeError, WebSocketDisconnect):
+                pass
+            finally:
+                await self.disconnect(canvas_id, client)
+
     def active_users(self, canvas_id: str) -> list[dict[str, str]]:
         seen: set[str] = set()
         users: list[dict[str, str]] = []
@@ -172,6 +191,15 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
     try:
         while True:
             message = json.loads(await ws.receive_text())
+            if not await is_canvas_member(canvas_id, user["id"]):
+                await ws.send_json(
+                    {
+                        "type": "access_removed",
+                        "message": "Your access to this canvas has been removed.",
+                    }
+                )
+                await ws.close(code=1008)
+                return
             if message.get("type") == "cursor":
                 await manager.broadcast(
                     canvas_id,

@@ -36,6 +36,7 @@ type ServerMessage =
   | AppliedMessage
   | CursorMessage
   | PresenceLeaveMessage
+  | { type: "access_removed"; message: string }
   | { type: "error"; message: string };
 
 export function useCanvasSocket(canvasId: string, token: string | null) {
@@ -43,6 +44,7 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
   const [state, setState] = useState<CanvasState>({ shapes: [] });
   const [revision, setRevision] = useState(0);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
+  const [accessMessage, setAccessMessage] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const pendingOps = useRef<CanvasOperation[]>([]);
   const seenOpIds = useRef<Set<string>>(new Set());
@@ -55,6 +57,7 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
 
     let shouldReconnect = true;
     let reconnectTimer: number | undefined;
+    setAccessMessage(null);
 
     const connect = () => {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -107,13 +110,24 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
             return next;
           });
         }
+        if (message.type === "access_removed") {
+          shouldReconnect = false;
+          pendingOps.current = [];
+          setAccessMessage(message.message);
+          setStatus("disconnected");
+          ws.close(1008);
+        }
       };
 
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         if (wsRef.current === ws) {
           wsRef.current = null;
         }
         setStatus("disconnected");
+        if (event.code === 1008) {
+          shouldReconnect = false;
+          setAccessMessage((current) => current ?? "You no longer have access to this canvas.");
+        }
         if (shouldReconnect) {
           reconnectTimer = window.setTimeout(connect, 1000);
         }
@@ -155,6 +169,9 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
   }, []);
 
   const sendOperation = useCallback((op: CanvasOperation) => {
+    if (accessMessage) {
+      return;
+    }
     seenOpIds.current.add(op.id);
     pendingOps.current.push(op);
     setState((current) => applyOperation(current, op));
@@ -162,13 +179,16 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(payload);
     }
-  }, []);
+  }, [accessMessage]);
 
   const sendCursorNow = useCallback((x: number, y: number, selectedShapeId: string | null) => {
+    if (accessMessage) {
+      return;
+    }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "cursor", x, y, selectedShapeId }));
     }
-  }, []);
+  }, [accessMessage]);
 
   const sendCursor = useMemo(() => throttle(sendCursorNow, 40), [sendCursorNow]);
 
@@ -178,6 +198,7 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
     state,
     revision,
     remoteCursors: Object.values(remoteCursors),
+    accessMessage,
     setLocalState: setState,
     sendOperation,
     sendCursor,

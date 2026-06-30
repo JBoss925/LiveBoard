@@ -45,3 +45,7 @@ class InviteRequest(BaseModel):
 
 class InviteResponse(BaseModel):
     user: UserOut
+
+
+class CanvasMembersResponse(BaseModel):
+    users: list[UserOut]

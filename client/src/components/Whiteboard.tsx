@@ -6,7 +6,7 @@ import { useLiveShapeUpdates } from "../hooks/useLiveShapeUpdates";
 import { useWhiteboardInteractions } from "../hooks/useWhiteboardInteractions";
 import { findShape, makeOperationId } from "../lib/operations";
 import type { Shape, Tool, User } from "../types";
-import { InvitePanel } from "./InvitePanel";
+import { ShareModal } from "./ShareModal";
 import { Toolbar } from "./Toolbar";
 import { BoardHeader } from "./whiteboard/BoardHeader";
 import { CanvasSvg } from "./whiteboard/CanvasSvg";
@@ -31,12 +31,14 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const [canvasName, setCanvasName] = useState("Canvas");
+  const [canvasOwnerId, setCanvasOwnerId] = useState<string | null>(null);
   const [canvasLoading, setCanvasLoading] = useState(true);
   const [tool, setTool] = useState<Tool>("select");
   const [strokeColor, setStrokeColor] = useState("#1d3557");
   const [fillColor, setFillColor] = useState("#a8dadc");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const selectedShape = useMemo(
     () => findShape(socket.state, selectedId),
@@ -64,8 +66,14 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     setCanvasLoading(true);
     api
       .getCanvas(canvasId)
-      .then((canvas) => setCanvasName(canvas.name))
-      .catch(() => setCanvasName("Canvas"))
+      .then((canvas) => {
+        setCanvasName(canvas.name);
+        setCanvasOwnerId(canvas.ownerId);
+      })
+      .catch(() => {
+        setCanvasName("Canvas");
+        setCanvasOwnerId(null);
+      })
       .finally(() => setCanvasLoading(false));
   }, [canvasId]);
 
@@ -140,6 +148,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
         revision={socket.revision}
         user={user}
         onBack={onBack}
+        onOpenShare={() => setShareOpen(true)}
       />
 
       <div className="board-layout">
@@ -167,11 +176,22 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
         />
 
         <section className="canvas-stage">
-          <InvitePanel canvasId={canvasId} />
           <div className="canvas-frame">
             {!socket.connected ? (
               <div className="canvas-loading-banner" role="status">
-                Syncing live canvas...
+                {socket.accessMessage ?? "Syncing live canvas..."}
+              </div>
+            ) : null}
+            {socket.accessMessage ? (
+              <div className="canvas-access-overlay" role="alert">
+                <div>
+                  <p className="eyebrow">Access removed</p>
+                  <h2>You no longer have access to this canvas.</h2>
+                  <p>{socket.accessMessage}</p>
+                  <button onClick={onBack} type="button">
+                    Back to canvases
+                  </button>
+                </div>
               </div>
             ) : null}
             <CanvasSvg
@@ -200,6 +220,14 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
           </div>
         </section>
       </div>
+      {shareOpen ? (
+        <ShareModal
+          canvasId={canvasId}
+          currentUserId={user.id}
+          ownerId={canvasOwnerId}
+          onClose={() => setShareOpen(false)}
+        />
+      ) : null}
       <span hidden>{history.version}</span>
     </main>
   );

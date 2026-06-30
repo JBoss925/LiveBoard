@@ -128,6 +128,13 @@ export function getCanvas(canvasId: string): Promise<CanvasDetail> {
   return request<CanvasDetail>(`/api/canvases/${canvasId}`);
 }
 
+export async function listCanvasMembers(canvasId: string): Promise<User[]> {
+  const response = await request<{ users: User[] }>(
+    `/api/canvases/${canvasId}/members`,
+  );
+  return response.users;
+}
+
 export async function inviteUser(
   canvasId: string,
   identifier: string,
@@ -140,4 +147,14 @@ export async function inviteUser(
     },
   );
   return response.user;
+}
+
+export function removeCanvasMember(
+  canvasId: string,
+  memberId: string,
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(
+    `/api/canvases/${canvasId}/members/${memberId}`,
+    { method: "DELETE" },
+  );
 }

@@ -9,10 +9,12 @@ from app.http_helpers import canvas_summary, decode_state, require_canvas_member
 from app.schemas import (
     CanvasCreateRequest,
     CanvasDetail,
+    CanvasMembersResponse,
     CanvasSummary,
     InviteRequest,
     InviteResponse,
 )
+from app.ws import manager
 
 router = APIRouter()
 
@@ -67,6 +69,24 @@ async def get_canvas(canvas_id: str, user: CurrentUser) -> CanvasDetail:
     return CanvasDetail(**summary.model_dump(), state=decode_state(row["state"]))
 
 
+@router.get("/api/canvases/{canvas_id}/members", response_model=CanvasMembersResponse)
+async def list_canvas_members(canvas_id: str, user: CurrentUser) -> CanvasMembersResponse:
+    await require_canvas_member(canvas_id, user["id"])
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT users.id, users.username, users.email
+            FROM canvas_members
+            JOIN users ON users.id = canvas_members.user_id
+            WHERE canvas_members.canvas_id = $1
+            ORDER BY users.username ASC
+            """,
+            canvas_id,
+        )
+    return CanvasMembersResponse(users=[user_out(row) for row in rows])
+
+
 @router.post("/api/canvases/{canvas_id}/invite", response_model=InviteResponse)
 async def invite_user(
     canvas_id: str, payload: InviteRequest, user: CurrentUser
@@ -95,3 +115,32 @@ async def invite_user(
             invited["id"],
         )
     return InviteResponse(user=user_out(invited))
+
+
+@router.delete("/api/canvases/{canvas_id}/members/{member_id}")
+async def remove_canvas_member(
+    canvas_id: str, member_id: str, user: CurrentUser
+) -> dict[str, bool]:
+    canvas = await require_canvas_member(canvas_id, user["id"])
+    if member_id == canvas["owner_id"]:
+        raise HTTPException(status_code=400, detail="The canvas owner cannot be removed")
+
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute(
+            """
+            DELETE FROM canvas_members
+            WHERE canvas_id = $1 AND user_id = $2
+            """,
+            canvas_id,
+            member_id,
+        )
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Canvas member not found")
+    await manager.remove_user_access(
+        canvas_id,
+        member_id,
+        "Your access to this canvas has been removed.",
+    )
+    return {"ok": True}
