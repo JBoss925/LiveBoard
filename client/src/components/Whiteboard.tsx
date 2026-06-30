@@ -27,7 +27,9 @@ type ContextMenuState = {
 export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const socket = useCanvasSocket(canvasId, token);
   const history = useCanvasHistory({ sendOperation: socket.sendOperation });
-  const liveUpdates = useLiveShapeUpdates({ sendOperation: socket.sendOperation });
+  const liveUpdates = useLiveShapeUpdates({
+    sendPreviewOperation: socket.sendPreviewOperation,
+  });
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const [canvasName, setCanvasName] = useState("Canvas");

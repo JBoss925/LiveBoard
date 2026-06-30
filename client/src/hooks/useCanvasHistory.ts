@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { makeOperationId } from "../lib/operations";
 import type { CanvasOperation, HistoryEntry } from "../types";
 
 type UseCanvasHistoryOptions = {
@@ -30,7 +31,7 @@ export function useCanvasHistory({ sendOperation }: UseCanvasHistoryOptions) {
     if (!entry) {
       return;
     }
-    sendOperation(entry.inverse);
+    sendOperation(reissueOperation(entry.inverse));
     redoStack.current.push(entry);
     touchHistory();
   }
@@ -40,7 +41,7 @@ export function useCanvasHistory({ sendOperation }: UseCanvasHistoryOptions) {
     if (!entry) {
       return;
     }
-    sendOperation(entry.forward);
+    sendOperation(reissueOperation(entry.forward));
     undoStack.current.push(entry);
     touchHistory();
   }
@@ -54,4 +55,8 @@ export function useCanvasHistory({ sendOperation }: UseCanvasHistoryOptions) {
     undo,
     version,
   };
+}
+
+function reissueOperation(op: CanvasOperation): CanvasOperation {
+  return { ...op, id: makeOperationId() } as CanvasOperation;
 }

@@ -224,6 +224,21 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                     },
                     exclude=ws,
                 )
+            elif message.get("type") == "preview_op":
+                op = message.get("op")
+                if not isinstance(op, dict) or not isinstance(op.get("id"), str):
+                    await ws.send_json({"type": "error", "message": "Invalid preview"})
+                    continue
+                await manager.broadcast(
+                    canvas_id,
+                    {
+                        "type": "preview_applied",
+                        "canvasId": canvas_id,
+                        "userId": user["id"],
+                        "op": op,
+                    },
+                    exclude=ws,
+                )
             elif message.get("type") == "op":
                 op = message.get("op")
                 if not isinstance(op, dict) or not isinstance(op.get("id"), str):

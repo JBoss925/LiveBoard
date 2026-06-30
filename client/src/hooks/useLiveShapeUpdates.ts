@@ -4,10 +4,10 @@ import { makeOperationId } from "../lib/operations";
 import type { CanvasOperation, Shape } from "../types";
 
 type UseLiveShapeUpdatesOptions = {
-  sendOperation: (op: CanvasOperation) => void;
+  sendPreviewOperation: (op: CanvasOperation) => void;
 };
 
-export function useLiveShapeUpdates({ sendOperation }: UseLiveShapeUpdatesOptions) {
+export function useLiveShapeUpdates({ sendPreviewOperation }: UseLiveShapeUpdatesOptions) {
   const timeout = useRef<number | undefined>(undefined);
   const lastRun = useRef(0);
   const latest = useRef<{ shape: Shape; before: Shape } | null>(null);
@@ -29,7 +29,7 @@ export function useLiveShapeUpdates({ sendOperation }: UseLiveShapeUpdatesOption
         return;
       }
 
-      sendOperation({
+      sendPreviewOperation({
         id: makeOperationId(),
         kind: "update_shape",
         shapeId: update.shape.id,

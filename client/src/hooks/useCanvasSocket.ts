@@ -20,6 +20,11 @@ type AppliedMessage = {
   op: CanvasOperation;
 };
 
+type PreviewMessage = {
+  type: "preview_applied";
+  op: CanvasOperation;
+};
+
 type CursorMessage = {
   type: "cursor";
   user: { id: string; username: string };
@@ -41,6 +46,7 @@ type PresenceJoinMessage = {
 type ServerMessage =
   | SnapshotMessage
   | AppliedMessage
+  | PreviewMessage
   | CursorMessage
   | PresenceJoinMessage
   | PresenceLeaveMessage
@@ -100,6 +106,9 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
             return;
           }
           seenOpIds.current.add(message.op.id);
+          setState((current) => applyOperation(current, message.op));
+        }
+        if (message.type === "preview_applied") {
           setState((current) => applyOperation(current, message.op));
         }
         if (message.type === "cursor") {
@@ -206,6 +215,15 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
     }
   }, [accessMessage]);
 
+  const sendPreviewOperation = useCallback((op: CanvasOperation) => {
+    if (accessMessage) {
+      return;
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "preview_op", op }));
+    }
+  }, [accessMessage]);
+
   const sendCursorNow = useCallback((x: number, y: number, selectedShapeId: string | null) => {
     if (accessMessage) {
       return;
@@ -227,6 +245,7 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
     accessMessage,
     setLocalState: setState,
     sendOperation,
+    sendPreviewOperation,
     sendCursor,
   };
 }
