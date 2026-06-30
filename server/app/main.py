@@ -1,11 +1,12 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket
 
 from app.db import close_pool, get_pool, init_db
 from app.routes_auth import router as auth_router
 from app.routes_canvases import router as canvases_router
+from app.ws import canvas_ws
 
 
 @asynccontextmanager
@@ -28,12 +29,6 @@ async def health() -> dict:
     return {"ok": True}
 
 
-@app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket) -> None:
-    await ws.accept()
-    try:
-        while True:
-            data = await ws.receive_text()
-            # Handle incoming messages
-    except WebSocketDisconnect:
-        pass
+@app.websocket("/ws/canvases/{canvas_id}")
+async def websocket_endpoint(ws: WebSocket, canvas_id: str) -> None:
+    await canvas_ws(ws, canvas_id)
