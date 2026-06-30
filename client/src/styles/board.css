@@ -185,6 +185,16 @@
   width: 100%;
 }
 
+.shape-text-content {
+  font-family: inherit;
+  height: 100%;
+  line-height: 1.2;
+  overflow: hidden;
+  white-space: pre-wrap;
+  width: 100%;
+  word-break: break-word;
+}
+
 .shape {
   cursor: move;
 }

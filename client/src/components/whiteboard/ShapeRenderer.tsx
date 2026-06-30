@@ -87,15 +87,24 @@ export function ShapeRenderer({
         strokeOpacity={shape.strokeOpacity ?? 1}
         strokeWidth={shape.strokeWidth}
       />
-      <text
+      <foreignObject
         x={shape.x + 12}
-        y={shape.y + shape.fontSize + 8}
-        fill={shape.textColor ?? shape.strokeColor}
-        fillOpacity={shape.textOpacity ?? shape.strokeOpacity ?? 1}
-        fontSize={shape.fontSize}
+        y={shape.y + 8}
+        width={Math.max(0, shape.width - 24)}
+        height={Math.max(0, shape.height - 16)}
+        pointerEvents="none"
       >
-        {shape.text}
-      </text>
+        <div
+          className="shape-text-content"
+          style={{
+            color: shape.textColor ?? shape.strokeColor,
+            fontSize: shape.fontSize,
+            opacity: shape.textOpacity ?? shape.strokeOpacity ?? 1,
+          }}
+        >
+          {shape.text}
+        </div>
+      </foreignObject>
     </g>
   );
 }
