@@ -48,6 +48,7 @@ type UseWhiteboardInteractionsOptions = {
   userId: string;
   sendCursor: (x: number, y: number, selectedShapeId: string | null) => void;
   sendOperation: (op: HistoryEntry["forward"]) => void;
+  onStartTextEdit: (shape: Shape) => void;
 };
 
 export function useWhiteboardInteractions({
@@ -65,6 +66,7 @@ export function useWhiteboardInteractions({
   userId,
   sendCursor,
   sendOperation,
+  onStartTextEdit,
 }: UseWhiteboardInteractionsOptions) {
   const interaction = useRef<Interaction>(defaultInteraction);
 
@@ -128,13 +130,13 @@ export function useWhiteboardInteractions({
       return;
     }
     if (tool === "text") {
-      const text = window.prompt("Text", "");
-      if (text?.trim()) {
-        finalizeCreate({
-          ...createBaseShape("text", point, { strokeColor, fillColor, createdBy: userId }),
-          text: text.trim(),
-        } as Shape);
-      }
+      const shape = createBaseShape("text", point, {
+        strokeColor,
+        fillColor,
+        createdBy: userId,
+      });
+      finalizeCreate(shape);
+      onStartTextEdit(shape);
       return;
     }
 
@@ -259,26 +261,8 @@ export function useWhiteboardInteractions({
       return;
     }
     event.stopPropagation();
-    const text = window.prompt("Text", shape.text);
-    if (text === null || text === shape.text) {
-      return;
-    }
-
-    const after = { ...shape, text, updatedAt: Date.now() };
-    history.sendWithHistory({
-      forward: {
-        id: makeOperationId(),
-        kind: "update_shape",
-        shapeId: shape.id,
-        patch: getChangedFields(shape, after),
-      },
-      inverse: {
-        id: makeOperationId(),
-        kind: "update_shape",
-        shapeId: shape.id,
-        patch: getChangedFields(after, shape),
-      },
-    });
+    setSelectedId(shape.id);
+    onStartTextEdit(shape);
   }
 
   useWhiteboardKeyboard({

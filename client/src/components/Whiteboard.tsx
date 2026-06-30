@@ -1,11 +1,12 @@
-import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import { KeyboardEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import * as api from "../api";
 import { useCanvasHistory } from "../hooks/useCanvasHistory";
 import { useCanvasSocket } from "../hooks/useCanvasSocket";
 import { useLiveShapeUpdates } from "../hooks/useLiveShapeUpdates";
 import { useWhiteboardInteractions } from "../hooks/useWhiteboardInteractions";
+import { getChangedFields } from "../lib/geometry";
 import { findShape, makeOperationId } from "../lib/operations";
-import type { Shape, Tool, User } from "../types";
+import type { Shape, TextShape, Tool, User } from "../types";
 import { ShareModal } from "./ShareModal";
 import { Toolbar } from "./Toolbar";
 import { BoardHeader } from "./whiteboard/BoardHeader";
@@ -22,6 +23,11 @@ type ContextMenuState = {
   shapeId: string;
   x: number;
   y: number;
+};
+
+type TextEditState = {
+  shapeId: string;
+  value: string;
 };
 
 export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
@@ -41,6 +47,8 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
+  const [textEdit, setTextEdit] = useState<TextEditState | null>(null);
+  const committedTextEditId = useRef<string | null>(null);
 
   const selectedShape = useMemo(
     () => findShape(socket.state, selectedId),
@@ -62,6 +70,7 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     userId: user.id,
     sendCursor: socket.sendCursor,
     sendOperation: socket.sendOperation,
+    onStartTextEdit: startTextEdit,
   });
 
   useEffect(() => {
@@ -141,6 +150,46 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     setContextMenu(null);
   }
 
+  function startTextEdit(shape: Shape) {
+    if (shape.type !== "text") {
+      return;
+    }
+    committedTextEditId.current = null;
+    setSelectedId(shape.id);
+    setTextEdit({ shapeId: shape.id, value: shape.text });
+  }
+
+  function commitTextEdit(edit = textEdit) {
+    if (!edit) {
+      return;
+    }
+    if (committedTextEditId.current === edit.shapeId) {
+      return;
+    }
+    committedTextEditId.current = edit.shapeId;
+    const shape = findShape(socket.state, edit.shapeId);
+    setTextEdit(null);
+    if (!shape || shape.type !== "text" || shape.text === edit.value) {
+      return;
+    }
+
+    const after = { ...shape, text: edit.value, updatedAt: Date.now() };
+    history.sendWithHistory({
+      forward: {
+        id: makeOperationId(),
+        kind: "update_shape",
+        shapeId: shape.id,
+        patch: getChangedFields(shape, after),
+      },
+      inverse: {
+        id: makeOperationId(),
+        kind: "update_shape",
+        shapeId: shape.id,
+        patch: getChangedFields(after, shape),
+      },
+    });
+  }
+
   return (
     <main className="board-shell">
       <BoardHeader
@@ -179,7 +228,14 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
         />
 
         <section className="canvas-stage">
-          <div className="canvas-frame">
+          <div
+            className="canvas-frame"
+            onPointerDownCapture={(event) => {
+              if (textEdit && !(event.target instanceof HTMLTextAreaElement)) {
+                commitTextEdit(textEdit);
+              }
+            }}
+          >
             {!socket.connected ? (
               <div className="canvas-loading-banner" role="status">
                 {socket.accessMessage ?? "Syncing live canvas..."}
@@ -201,6 +257,20 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
               canvasState={socket.state}
               remoteCursors={socket.remoteCursors}
               selectedShape={selectedShape}
+              textEditor={
+                textEdit && selectedShape?.type === "text" ? (
+                  <InlineTextEditor
+                    shape={selectedShape}
+                    value={textEdit.value}
+                    onChange={(value) =>
+                      setTextEdit((current) =>
+                        current ? { ...current, value } : current,
+                      )
+                    }
+                    onCommit={(value) => commitTextEdit({ ...textEdit, value })}
+                  />
+                ) : null
+              }
               svgRef={svgRef}
               onCanvasPointerDown={interactions.handleCanvasPointerDown}
               onPointerMove={interactions.handlePointerMove}
@@ -237,6 +307,61 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
       ) : null}
       <span hidden>{history.version}</span>
     </main>
+  );
+}
+
+type InlineTextEditorProps = {
+  shape: TextShape;
+  value: string;
+  onChange: (value: string) => void;
+  onCommit: (value: string) => void;
+};
+
+function InlineTextEditor({
+  shape,
+  value,
+  onChange,
+  onCommit,
+}: InlineTextEditorProps) {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    textareaRef.current?.focus();
+    textareaRef.current?.select();
+  }, [shape.id]);
+
+  function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onCommit(event.currentTarget.value);
+    }
+    if ((event.key === "Enter" && (event.metaKey || event.ctrlKey)) || event.key === "Tab") {
+      event.preventDefault();
+      onCommit(event.currentTarget.value);
+    }
+  }
+
+  return (
+    <foreignObject
+      x={shape.x + 12}
+      y={shape.y + 8}
+      width={Math.max(80, shape.width - 24)}
+      height={Math.max(shape.fontSize + 16, shape.height - 16)}
+    >
+      <textarea
+        ref={textareaRef}
+        className="inline-text-editor"
+        style={{
+          color: shape.strokeColor,
+          fontSize: shape.fontSize,
+        }}
+        value={value}
+        onBlur={(event) => onCommit(event.currentTarget.value)}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={handleKeyDown}
+        onPointerDown={(event) => event.stopPropagation()}
+      />
+    </foreignObject>
   );
 }
 

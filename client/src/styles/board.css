@@ -145,6 +145,18 @@
   display: block;
 }
 
+.inline-text-editor {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--steel-blue);
+  border-radius: 4px;
+  font: inherit;
+  height: 100%;
+  line-height: 1.2;
+  padding: 0;
+  resize: none;
+  width: 100%;
+}
+
 .shape {
   cursor: move;
 }

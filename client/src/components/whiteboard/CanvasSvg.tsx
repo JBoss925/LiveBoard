@@ -1,4 +1,4 @@
-import type { MouseEvent, PointerEvent } from "react";
+import type { MouseEvent, PointerEvent, ReactNode } from "react";
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
@@ -15,6 +15,7 @@ type CanvasSvgProps = {
   canvasState: CanvasState;
   remoteCursors: RemoteCursor[];
   selectedShape: Shape | null;
+  textEditor: ReactNode;
   svgRef: React.RefObject<SVGSVGElement | null>;
   onCanvasPointerDown: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
@@ -33,6 +34,7 @@ export function CanvasSvg({
   canvasState,
   remoteCursors,
   selectedShape,
+  textEditor,
   svgRef,
   onCanvasPointerDown,
   onPointerMove,
@@ -70,6 +72,7 @@ export function CanvasSvg({
           onHandlePointerDown={onHandlePointerDown}
         />
       ) : null}
+      {textEditor}
       <RemoteCursorLayer cursors={remoteCursors} />
     </svg>
   );
