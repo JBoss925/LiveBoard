@@ -63,13 +63,13 @@
   aspect-ratio: 1;
   display: inline-flex;
   justify-content: center;
-  padding: 7px;
+  padding: 0;
   width: 36px;
 }
 
 .icon-button svg {
-  fill: currentColor;
   height: 20px;
+  stroke: currentColor;
   width: 20px;
 }
 
@@ -100,7 +100,7 @@
   display: grid;
   align-content: start;
   gap: 18px;
-  overflow: auto;
+  overflow: hidden;
   padding: 14px;
 }
 
@@ -109,8 +109,20 @@
   gap: 8px;
 }
 
-.tool-group button {
+.tool-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.tool-button,
+.action-button {
+  min-height: 40px;
   width: 100%;
+}
+
+.action-button.danger {
+  color: var(--strawberry-red);
 }
 
 .color-group label {
@@ -312,6 +324,10 @@
   padding: 18px;
 }
 
+.canvas-access-overlay button {
+  justify-self: start;
+}
+
 .canvas-access-overlay p:not(.eyebrow) {
   color: var(--muted-ink);
 }
@@ -329,8 +345,12 @@
 }
 
 .shape-context-menu button {
+  align-items: center;
   border: 0;
   border-radius: 4px;
+  display: flex;
+  gap: 9px;
+  justify-content: flex-start;
   padding: 8px 10px;
   text-align: left;
 }
@@ -341,6 +361,10 @@
 
 .shape-context-menu button.danger {
   color: var(--strawberry-red);
+}
+
+.shape-context-menu svg {
+  flex: 0 0 auto;
 }
 
 .modal-backdrop {

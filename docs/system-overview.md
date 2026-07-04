@@ -35,7 +35,7 @@ LiveBoard is not a general-purpose infinite whiteboard. It does not implement:
 
 | Layer | Technology | Role |
 |---|---|---|
-| Frontend | React 19, TypeScript, Vite | SPA, dashboard, whiteboard UI |
+| Frontend | React 19, TypeScript, Vite, lucide-react | SPA, dashboard, whiteboard UI |
 | Backend | FastAPI, Python 3.12, asyncpg | HTTP API, WebSocket API, auth, persistence |
 | Database | PostgreSQL 16 | Users, sessions, canvases, memberships, operations, history |
 | Dev Runtime | Docker Compose | Local db/server/client services |

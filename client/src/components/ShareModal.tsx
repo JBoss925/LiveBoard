@@ -1,4 +1,5 @@
 import { FormEvent, MouseEvent, useEffect, useState } from "react";
+import { Plus, Trash2, X } from "lucide-react";
 import * as api from "../api";
 import type { User } from "../types";
 
@@ -124,8 +125,14 @@ export function ShareModal({
             <p className="eyebrow">Sharing</p>
             <h2 id="share-modal-title">Canvas access</h2>
           </div>
-          <button aria-label="Close sharing" onClick={onClose} type="button">
-            Close
+          <button
+            aria-label="Close sharing"
+            className="icon-button"
+            onClick={onClose}
+            title="Close sharing"
+            type="button"
+          >
+            <X aria-hidden="true" size={18} />
           </button>
         </header>
 
@@ -141,8 +148,9 @@ export function ShareModal({
                 required
                 value={identifier}
               />
-              <button className="primary" disabled={submitting} type="submit">
-                {submitting ? "Inviting" : "Invite"}
+              <button className="primary inline-icon-button" disabled={submitting} type="submit">
+                <Plus aria-hidden="true" size={17} />
+                <span>{submitting ? "Inviting" : "Invite"}</span>
               </button>
             </div>
           </label>
@@ -204,12 +212,14 @@ function MemberRow({
       <p>{selfLabel}</p>
       {canRemove ? (
         <button
-          className="text-button danger"
+          aria-label={`Remove ${member.username}`}
+          className="icon-button danger"
           disabled={isRemoving}
           onClick={() => onRemove(member)}
+          title={`Remove ${member.username}`}
           type="button"
         >
-          {isRemoving ? "Removing" : "Remove"}
+          <Trash2 aria-hidden="true" size={17} />
         </button>
       ) : null}
     </article>

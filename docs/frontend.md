@@ -34,6 +34,26 @@ The frontend does not read or write session tokens.
 | `SelectionOverlay` | Selection bounds and resize handles |
 | `RemoteCursorLayer` | Remote cursor rendering |
 
+## Icon System
+
+The frontend uses `lucide-react` for semantic UI icons. Prefer Lucide icons over hand-written SVGs for common actions and tools.
+
+Current icon usage includes:
+
+- toolbar drawing tools: select, rectangle, ellipse, line, text
+- edit actions: undo, redo, delete
+- navigation/sharing: back, share/collaborators, close
+- dashboard actions: refresh, logout, create
+- context menu actions: bring/send ordering and delete
+
+Icon-only buttons must include:
+
+- `aria-label`
+- `title`
+- `.icon-button`
+
+Icon+text buttons should use `.inline-icon-button` or existing primary button styling with an icon and text span.
+
 ## Whiteboard State
 
 `Whiteboard` owns UI-local state:

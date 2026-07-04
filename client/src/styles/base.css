@@ -45,11 +45,15 @@ input {
 }
 
 button {
+  align-items: center;
   border: 1px solid var(--border-strong);
   border-radius: 6px;
   background: var(--surface);
   color: var(--ink);
   cursor: pointer;
+  display: inline-flex;
+  gap: 7px;
+  justify-content: center;
   padding: 8px 12px;
 }
 
@@ -78,6 +82,17 @@ button.text-button {
 
 button.text-button.danger {
   color: var(--strawberry-red);
+}
+
+button svg {
+  flex: 0 0 auto;
+}
+
+.inline-icon-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
+  justify-content: center;
 }
 
 input {

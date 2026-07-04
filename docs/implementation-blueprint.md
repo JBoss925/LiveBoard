@@ -188,6 +188,8 @@ Whiteboard should compose:
 
 Keep interaction state in hooks, not render components.
 
+Use `lucide-react` for semantic icons in toolbars, headers, modals, and context menus. Icon-only controls should expose accessible labels and tooltips; avoid text-only buttons for standard actions like undo, redo, delete, refresh, back, close, share, and drawing tools.
+
 ## 11. Build Pointer Interactions
 
 Use an interaction state machine:

@@ -1,4 +1,12 @@
 import { KeyboardEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ArrowDownToLine,
+  ArrowLeft,
+  ArrowUpToLine,
+  ChevronsDown,
+  ChevronsUp,
+  Trash2,
+} from "lucide-react";
 import * as api from "../api";
 import { useCanvasHistory } from "../hooks/useCanvasHistory";
 import { useCanvasSocket } from "../hooks/useCanvasSocket";
@@ -326,8 +334,9 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
                   <p className="eyebrow">Access removed</p>
                   <h2>You no longer have access to this canvas.</h2>
                   <p>{socket.accessMessage}</p>
-                  <button onClick={onBack} type="button">
-                    Back to canvases
+                  <button className="inline-icon-button" onClick={onBack} type="button">
+                    <ArrowLeft aria-hidden="true" size={17} />
+                    <span>Back to canvases</span>
                   </button>
                 </div>
               </div>
@@ -471,19 +480,24 @@ function ShapeContextMenu({
       onClick={(event) => event.stopPropagation()}
     >
       <button onClick={onBringToFront} type="button">
-        Bring to front
+        <ArrowUpToLine aria-hidden="true" size={16} />
+        <span>Bring to front</span>
       </button>
       <button onClick={onBringForward} type="button">
-        Bring forward
+        <ChevronsUp aria-hidden="true" size={16} />
+        <span>Bring forward</span>
       </button>
       <button onClick={onSendBackward} type="button">
-        Send backward
+        <ChevronsDown aria-hidden="true" size={16} />
+        <span>Send backward</span>
       </button>
       <button onClick={onSendToBack} type="button">
-        Send to back
+        <ArrowDownToLine aria-hidden="true" size={16} />
+        <span>Send to back</span>
       </button>
       <button className="danger" onClick={onDelete} type="button">
-        Delete
+        <Trash2 aria-hidden="true" size={16} />
+        <span>Delete</span>
       </button>
     </div>
   );

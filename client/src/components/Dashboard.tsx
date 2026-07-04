@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { LogOut, Plus, RefreshCw } from "lucide-react";
 import * as api from "../api";
 import type { CanvasSummary, User } from "../types";
 import { CanvasList, CanvasListLoading } from "./CanvasList";
@@ -60,8 +61,14 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
         </div>
         <div className="topbar-actions">
           <span className="user-chip">{user.username}</span>
-          <button onClick={onLogout} type="button">
-            Log out
+          <button
+            aria-label="Log out"
+            className="icon-button"
+            onClick={onLogout}
+            title="Log out"
+            type="button"
+          >
+            <LogOut aria-hidden="true" size={18} />
           </button>
         </div>
       </header>
@@ -79,15 +86,22 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
             />
           </label>
           <button className="primary create-submit" disabled={creating} type="submit">
-            {creating ? "Creating..." : "Create and open"}
+            <Plus aria-hidden="true" size={18} />
+            <span>{creating ? "Creating..." : "Create and open"}</span>
           </button>
         </form>
 
         <section className="list-panel">
           <div className="section-heading">
             <h2>Your canvases</h2>
-            <button onClick={() => void loadCanvases()} type="button">
-              Refresh
+            <button
+              aria-label="Refresh canvases"
+              className="icon-button"
+              onClick={() => void loadCanvases()}
+              title="Refresh canvases"
+              type="button"
+            >
+              <RefreshCw aria-hidden="true" size={18} />
             </button>
           </div>
           {error ? <div className="error-banner">{error}</div> : null}

@@ -1,3 +1,14 @@
+import {
+  Circle,
+  type LucideIcon,
+  MousePointer2,
+  Redo2,
+  Slash,
+  Square,
+  Trash2,
+  Type,
+  Undo2,
+} from "lucide-react";
 import type { Tool } from "../types";
 
 type ToolbarProps = {
@@ -33,12 +44,12 @@ type ToolbarProps = {
   onRedo: () => void;
 };
 
-const tools: Array<{ id: Tool; label: string }> = [
-  { id: "select", label: "Select" },
-  { id: "rect", label: "Rect" },
-  { id: "ellipse", label: "Ellipse" },
-  { id: "line", label: "Line" },
-  { id: "text", label: "Text" },
+const tools: Array<{ id: Tool; label: string; icon: LucideIcon }> = [
+  { id: "select", label: "Select", icon: MousePointer2 },
+  { id: "rect", label: "Rectangle", icon: Square },
+  { id: "ellipse", label: "Ellipse", icon: Circle },
+  { id: "line", label: "Line", icon: Slash },
+  { id: "text", label: "Text", icon: Type },
 ];
 
 export function Toolbar({
@@ -76,17 +87,23 @@ export function Toolbar({
   return (
     <aside className="toolbar">
       <div className="tool-group">
-        {tools.map((item) => (
-          <button
-            className={tool === item.id ? "active" : ""}
-            key={item.id}
-            onClick={() => onToolChange(item.id)}
-            title={item.label}
-            type="button"
-          >
-            {item.label}
-          </button>
-        ))}
+        <div className="tool-grid">
+          {tools.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                aria-label={item.label}
+                className={`icon-button tool-button ${tool === item.id ? "active" : ""}`}
+                key={item.id}
+                onClick={() => onToolChange(item.id)}
+                title={item.label}
+                type="button"
+              >
+                <Icon aria-hidden="true" size={19} strokeWidth={2.1} />
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="tool-group color-group">
@@ -146,15 +163,36 @@ export function Toolbar({
         ) : null}
       </div>
 
-      <div className="tool-group">
-        <button disabled={!hasSelection} onClick={onDelete} type="button">
-          Delete
+      <div className="tool-group tool-grid">
+        <button
+          aria-label="Delete selected shape"
+          className="icon-button action-button danger"
+          disabled={!hasSelection}
+          onClick={onDelete}
+          title="Delete selected shape"
+          type="button"
+        >
+          <Trash2 aria-hidden="true" size={18} />
         </button>
-        <button disabled={!canUndo} onClick={onUndo} type="button">
-          Undo
+        <button
+          aria-label="Undo"
+          className="icon-button action-button"
+          disabled={!canUndo}
+          onClick={onUndo}
+          title="Undo"
+          type="button"
+        >
+          <Undo2 aria-hidden="true" size={18} />
         </button>
-        <button disabled={!canRedo} onClick={onRedo} type="button">
-          Redo
+        <button
+          aria-label="Redo"
+          className="icon-button action-button"
+          disabled={!canRedo}
+          onClick={onRedo}
+          title="Redo"
+          type="button"
+        >
+          <Redo2 aria-hidden="true" size={18} />
         </button>
       </div>
     </aside>
