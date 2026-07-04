@@ -125,6 +125,11 @@
   color: var(--strawberry-red);
 }
 
+.delete-button {
+  aspect-ratio: auto;
+  grid-column: 1 / -1;
+}
+
 .color-group label {
   font-size: 12px;
 }

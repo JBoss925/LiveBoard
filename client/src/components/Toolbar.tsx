@@ -163,17 +163,7 @@ export function Toolbar({
         ) : null}
       </div>
 
-      <div className="tool-group tool-grid">
-        <button
-          aria-label="Delete selected shape"
-          className="icon-button action-button danger"
-          disabled={!hasSelection}
-          onClick={onDelete}
-          title="Delete selected shape"
-          type="button"
-        >
-          <Trash2 aria-hidden="true" size={18} />
-        </button>
+            <div className="tool-group tool-grid">
         <button
           aria-label="Undo"
           className="icon-button action-button"
@@ -193,6 +183,16 @@ export function Toolbar({
           type="button"
         >
           <Redo2 aria-hidden="true" size={18} />
+        </button>
+        <button
+          aria-label="Delete selected shape"
+          className="icon-button action-button danger delete-button"
+          disabled={!hasSelection}
+          onClick={onDelete}
+          title="Delete selected shape"
+          type="button"
+        >
+          <Trash2 aria-hidden="true" size={18} />
         </button>
       </div>
     </aside>
