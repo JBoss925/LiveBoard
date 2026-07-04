@@ -12,6 +12,7 @@ from starlette.websockets import WebSocketState
 from app.auth import SESSION_COOKIE_NAME, get_user_by_token
 from app.canvas_ops import apply_operation, invert_operation, normalize_state
 from app.db import get_pool
+from app.rate_limit import check_socket_rate
 from app.validation import MAX_WS_MESSAGE_BYTES, validate_operation, validate_shape_count
 
 SESSION_RECHECK_SECONDS = 30
@@ -464,9 +465,16 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                 await ws.send_json({"type": "error", "message": "Message is too large"})
                 continue
             message = json.loads(message_text)
+            message_type = message.get("type")
+            if not isinstance(message_type, str):
+                await ws.send_json({"type": "error", "message": "Invalid message"})
+                continue
+            if not check_socket_rate(user["id"], canvas_id, message_type):
+                await ws.send_json({"type": "error", "message": "Too many requests"})
+                continue
             if await close_if_session_invalid(ws, canvas_id, user["id"], token):
                 return
-            if message.get("type") == "cursor":
+            if message_type == "cursor":
                 await manager.broadcast(
                     canvas_id,
                     {
@@ -478,7 +486,7 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                     },
                     exclude=ws,
                 )
-            elif message.get("type") == "preview_op":
+            elif message_type == "preview_op":
                 op = message.get("op")
                 if not isinstance(op, dict) or not isinstance(op.get("id"), str):
                     await ws.send_json({"type": "error", "message": "Invalid preview"})
@@ -498,7 +506,7 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                     },
                     exclude=ws,
                 )
-            elif message.get("type") == "op":
+            elif message_type == "op":
                 op = message.get("op")
                 if not isinstance(op, dict) or not isinstance(op.get("id"), str):
                     await ws.send_json({"type": "error", "message": "Invalid operation"})
@@ -527,9 +535,9 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                         "history": history_status,
                     },
                 )
-            elif message.get("type") in {"undo", "redo"}:
+            elif message_type in {"undo", "redo"}:
                 revision, _state, op, history_status = await apply_history_action(
-                    canvas_id, user["id"], message["type"]
+                    canvas_id, user["id"], message_type
                 )
                 if op is None:
                     await ws.send_json({"type": "history_status", "history": history_status})
