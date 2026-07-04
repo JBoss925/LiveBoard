@@ -1,11 +1,12 @@
-from typing import Annotated
 from uuid import uuid4
 
 import asyncpg
-from fastapi import APIRouter, Header, HTTPException
+from fastapi import APIRouter, Cookie, HTTPException, Response
 
 from app.auth import (
     CurrentUser,
+    SESSION_COOKIE_NAME,
+    SESSION_TTL_HOURS,
     create_session,
     hash_password,
     normalize_identifier,
@@ -18,8 +19,24 @@ from app.schemas import AuthResponse, LoginRequest, SignupRequest, UserOut
 router = APIRouter()
 
 
+def set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=SESSION_TTL_HOURS * 60 * 60,
+        path="/",
+    )
+
+
+def clear_session_cookie(response: Response) -> None:
+    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/", samesite="lax")
+
+
 @router.post("/api/auth/signup", response_model=AuthResponse)
-async def signup(payload: SignupRequest) -> AuthResponse:
+async def signup(payload: SignupRequest, response: Response) -> AuthResponse:
     username = normalize_identifier(payload.username)
     email = normalize_identifier(payload.email)
     if not username:
@@ -48,11 +65,12 @@ async def signup(payload: SignupRequest) -> AuthResponse:
         raise HTTPException(status_code=409, detail="Username or email already exists")
 
     token = await create_session(user_id)
-    return AuthResponse(token=token, user=user_out(row))
+    set_session_cookie(response, token)
+    return AuthResponse(user=user_out(row))
 
 
 @router.post("/api/auth/login", response_model=AuthResponse)
-async def login(payload: LoginRequest) -> AuthResponse:
+async def login(payload: LoginRequest, response: Response) -> AuthResponse:
     identifier = normalize_identifier(payload.identifier)
     if not identifier or not payload.password:
         raise HTTPException(status_code=400, detail="Username/email and password are required")
@@ -71,17 +89,21 @@ async def login(payload: LoginRequest) -> AuthResponse:
         raise HTTPException(status_code=401, detail="Invalid username/email or password")
 
     token = await create_session(row["id"])
-    return AuthResponse(token=token, user=user_out(row))
+    set_session_cookie(response, token)
+    return AuthResponse(user=user_out(row))
 
 
 @router.post("/api/auth/logout")
 async def logout(
-    user: CurrentUser, authorization: Annotated[str, Header()]
+    response: Response,
+    user: CurrentUser,
+    session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
 ) -> dict:
-    token = authorization.removeprefix("Bearer ").strip()
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        await conn.execute("DELETE FROM sessions WHERE token = $1", token)
+    if session_cookie:
+        pool = await get_pool()
+        async with pool.acquire() as conn:
+            await conn.execute("DELETE FROM sessions WHERE token = $1", session_cookie)
+    clear_session_cookie(response)
     return {"ok": True}
 
 

@@ -17,12 +17,6 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    const token = api.getToken();
-    if (!token) {
-      setScreen({ name: "auth" });
-      return;
-    }
-
     api
       .getMe()
       .then((currentUser) => {
@@ -30,7 +24,6 @@ export default function App() {
         setScreen({ name: "dashboard" });
       })
       .catch(() => {
-        api.setToken(null);
         setScreen({ name: "auth" });
       });
   }, []);
@@ -68,7 +61,7 @@ export default function App() {
     return (
       <Whiteboard
         canvasId={screen.canvasId}
-        token={api.getToken()}
+        token={null}
         user={user}
         onBack={() => setScreen({ name: "dashboard" })}
       />

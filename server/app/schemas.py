@@ -8,7 +8,6 @@ class UserOut(BaseModel):
 
 
 class AuthResponse(BaseModel):
-    token: str
     user: UserOut
 
 

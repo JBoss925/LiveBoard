@@ -5,13 +5,14 @@ import secrets
 from typing import Annotated
 
 import asyncpg
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, status
 
 from app.db import get_pool
 
 HASH_ALGORITHM = "pbkdf2_sha256"
 HASH_ITERATIONS = 260_000
 SESSION_TTL_HOURS = 12
+SESSION_COOKIE_NAME = "liveboard_session"
 
 
 def normalize_identifier(value: str) -> str:
@@ -98,13 +99,17 @@ async def get_user_by_token(token: str) -> asyncpg.Record | None:
 
 async def get_current_user(
     authorization: Annotated[str | None, Header()] = None,
+    session_cookie: Annotated[str | None, Cookie(alias=SESSION_COOKIE_NAME)] = None,
 ) -> asyncpg.Record:
-    if not authorization or not authorization.startswith("Bearer "):
+    token = session_cookie
+    if not token and authorization and authorization.startswith("Bearer "):
+        token = authorization.removeprefix("Bearer ").strip()
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing bearer token",
+            detail="Missing session",
         )
-    user = await get_user_by_token(authorization.removeprefix("Bearer ").strip())
+    user = await get_user_by_token(token)
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

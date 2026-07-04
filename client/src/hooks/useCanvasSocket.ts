@@ -10,7 +10,6 @@ import type {
 import { applyOperation } from "../lib/operations";
 import { getPresenceColor, sortActiveUsers } from "../lib/presence";
 import { throttle } from "../lib/throttle";
-import { setToken } from "../api";
 
 type SocketStatus = "connecting" | "connected" | "disconnected";
 
@@ -175,7 +174,6 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
         }
         if (message.type === "session_expired") {
           shouldReconnect = false;
-          setToken(null);
           pendingOps.current = [];
           setActiveUsers([]);
           setRemoteCursors({});
