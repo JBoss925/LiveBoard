@@ -24,6 +24,16 @@ This starts:
 
 Open http://localhost:5173 in your browser.
 
+Docker Compose uses local-development defaults for PostgreSQL. Override them with environment variables when needed:
+
+```bash
+POSTGRES_USER=liveboard \
+POSTGRES_PASSWORD='replace-me' \
+POSTGRES_DB=liveboard \
+SESSION_COOKIE_SECURE=true \
+docker compose up --build
+```
+
 ## Running Locally
 
 You need a running PostgreSQL instance. The default connection string is:

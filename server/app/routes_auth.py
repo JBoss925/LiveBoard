@@ -6,6 +6,7 @@ from fastapi import APIRouter, Cookie, HTTPException, Response
 from app.auth import (
     CurrentUser,
     SESSION_COOKIE_NAME,
+    SESSION_COOKIE_SECURE,
     SESSION_TTL_HOURS,
     create_session,
     hash_password,
@@ -24,7 +25,7 @@ def set_session_cookie(response: Response, token: str) -> None:
         key=SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
-        secure=False,
+        secure=SESSION_COOKIE_SECURE,
         samesite="lax",
         max_age=SESSION_TTL_HOURS * 60 * 60,
         path="/",

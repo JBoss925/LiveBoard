@@ -2,9 +2,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: whiteboard
-      POSTGRES_PASSWORD: whiteboard
-      POSTGRES_DB: whiteboard
+      POSTGRES_USER: ${POSTGRES_USER:-whiteboard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-whiteboard}
+      POSTGRES_DB: ${POSTGRES_DB:-whiteboard}
     ports:
       - "5432:5432"
     volumes:
@@ -16,7 +16,8 @@ services:
     ports:
       - "3001:3001"
     environment:
-      DATABASE_URL: postgres://whiteboard:whiteboard@db:5432/whiteboard
+      DATABASE_URL: postgres://${POSTGRES_USER:-whiteboard}:${POSTGRES_PASSWORD:-whiteboard}@db:5432/${POSTGRES_DB:-whiteboard}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
     depends_on:
       - db
 

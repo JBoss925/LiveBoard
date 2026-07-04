@@ -13,6 +13,7 @@ HASH_ALGORITHM = "pbkdf2_sha256"
 HASH_ITERATIONS = 260_000
 SESSION_TTL_HOURS = 12
 SESSION_COOKIE_NAME = "liveboard_session"
+SESSION_COOKIE_SECURE = os.environ.get("SESSION_COOKIE_SECURE", "false").lower() == "true"
 
 
 def normalize_identifier(value: str) -> str:
