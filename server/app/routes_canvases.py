@@ -20,6 +20,7 @@ from app.schemas import (
     InviteRequest,
     InviteResponse,
 )
+from app.validation import validate_canvas_name
 from app.ws import manager
 
 router = APIRouter()
@@ -56,7 +57,7 @@ async def create_canvas(payload: CanvasCreateRequest, user: CurrentUser) -> Canv
                 RETURNING id, name, owner_id, revision, updated_at
                 """,
                 canvas_id,
-                payload.name.strip(),
+                validate_canvas_name(payload.name),
                 user["id"],
                 json.dumps({"shapes": []}),
             )

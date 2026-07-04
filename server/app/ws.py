@@ -12,6 +12,7 @@ from starlette.websockets import WebSocketState
 from app.auth import SESSION_COOKIE_NAME, get_user_by_token
 from app.canvas_ops import apply_operation, invert_operation, normalize_state
 from app.db import get_pool
+from app.validation import MAX_WS_MESSAGE_BYTES, validate_operation, validate_shape_count
 
 SESSION_RECHECK_SECONDS = 30
 
@@ -209,6 +210,8 @@ async def apply_and_persist_operation(
             if row is None:
                 raise ValueError("Canvas not found")
             state = decode_state(row["state"])
+            validate_operation(op)
+            validate_shape_count(state, op)
             next_state = apply_operation(state, op)
             next_revision = int(row["revision"]) + 1
             await conn.execute(
@@ -261,6 +264,8 @@ async def apply_and_record_history(
                 raise ValueError("Canvas not found")
 
             state = decode_state(row["state"])
+            validate_operation(forward_op)
+            validate_shape_count(state, forward_op)
             inverse_op = invert_operation(state, forward_op)
             if inverse_op is None:
                 raise ValueError("Invalid operation")
@@ -454,7 +459,11 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                     return
                 continue
 
-            message = json.loads(receive_task.result())
+            message_text = receive_task.result()
+            if len(message_text.encode("utf-8")) > MAX_WS_MESSAGE_BYTES:
+                await ws.send_json({"type": "error", "message": "Message is too large"})
+                continue
+            message = json.loads(message_text)
             if await close_if_session_invalid(ws, canvas_id, user["id"], token):
                 return
             if message.get("type") == "cursor":
@@ -472,6 +481,11 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
             elif message.get("type") == "preview_op":
                 op = message.get("op")
                 if not isinstance(op, dict) or not isinstance(op.get("id"), str):
+                    await ws.send_json({"type": "error", "message": "Invalid preview"})
+                    continue
+                try:
+                    validate_operation(op)
+                except ValueError:
                     await ws.send_json({"type": "error", "message": "Invalid preview"})
                     continue
                 await manager.broadcast(
