@@ -1,0 +1,4 @@
+interface:
+  display_name: "LiveBoard Docs"
+  short_description: "Keep LiveBoard docs synchronized with code changes."
+  default_prompt: "Update LiveBoard documentation for the recent code changes."
