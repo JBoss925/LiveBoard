@@ -47,3 +47,13 @@ async def require_canvas_member(canvas_id: str, user_id: str) -> asyncpg.Record:
     if row is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Canvas not found")
     return row
+
+
+async def require_canvas_owner(canvas_id: str, user_id: str) -> asyncpg.Record:
+    row = await require_canvas_member(canvas_id, user_id)
+    if row["owner_id"] != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the canvas owner can manage access",
+        )
+    return row

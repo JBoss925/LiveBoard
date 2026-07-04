@@ -5,7 +5,13 @@ from fastapi import APIRouter, HTTPException
 
 from app.auth import CurrentUser, normalize_identifier
 from app.db import get_pool
-from app.http_helpers import canvas_summary, decode_state, require_canvas_member, user_out
+from app.http_helpers import (
+    canvas_summary,
+    decode_state,
+    require_canvas_member,
+    require_canvas_owner,
+    user_out,
+)
 from app.schemas import (
     CanvasCreateRequest,
     CanvasDetail,
@@ -91,7 +97,7 @@ async def list_canvas_members(canvas_id: str, user: CurrentUser) -> CanvasMember
 async def invite_user(
     canvas_id: str, payload: InviteRequest, user: CurrentUser
 ) -> InviteResponse:
-    await require_canvas_member(canvas_id, user["id"])
+    await require_canvas_owner(canvas_id, user["id"])
     identifier = normalize_identifier(payload.identifier)
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -121,7 +127,7 @@ async def invite_user(
 async def remove_canvas_member(
     canvas_id: str, member_id: str, user: CurrentUser
 ) -> dict[str, bool]:
-    canvas = await require_canvas_member(canvas_id, user["id"])
+    canvas = await require_canvas_owner(canvas_id, user["id"])
     if member_id == canvas["owner_id"]:
         raise HTTPException(status_code=400, detail="The canvas owner cannot be removed")
 
