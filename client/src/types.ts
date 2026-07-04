@@ -70,6 +70,11 @@ export type HistoryEntry = {
   inverse: CanvasOperation;
 };
 
+export type HistoryStatus = {
+  canUndo: boolean;
+  canRedo: boolean;
+};
+
 export type User = {
   id: string;
   username: string;

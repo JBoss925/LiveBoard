@@ -26,6 +26,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
   const response = await fetch(path, { ...options, headers });
   if (!response.ok) {
+    if (response.status === 401) {
+      setToken(null);
+    }
     let message = "Request failed";
     try {
       const body = (await response.json()) as { detail?: unknown };

@@ -13,8 +13,18 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '12 hours',
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE sessions
+ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '12 hours';
+
+ALTER TABLE sessions
+ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
+CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions(expires_at);
 
 CREATE TABLE IF NOT EXISTS canvases (
   id TEXT PRIMARY KEY,
@@ -41,3 +51,22 @@ CREATE TABLE IF NOT EXISTS canvas_ops (
   op JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS canvas_history (
+  id TEXT PRIMARY KEY,
+  canvas_id TEXT NOT NULL REFERENCES canvases(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  forward_op JSONB NOT NULL,
+  inverse_op JSONB NOT NULL,
+  applied_revision BIGINT NOT NULL,
+  undone_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS canvas_history_canvas_active_idx
+ON canvas_history(canvas_id, applied_revision DESC)
+WHERE undone_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS canvas_history_canvas_redo_idx
+ON canvas_history(canvas_id, undone_at DESC)
+WHERE undone_at IS NOT NULL;

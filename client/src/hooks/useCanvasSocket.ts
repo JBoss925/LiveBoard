@@ -1,10 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ActiveUser, CanvasOperation, CanvasState, RemoteCursor } from "../types";
+import type {
+  ActiveUser,
+  CanvasOperation,
+  CanvasState,
+  HistoryEntry,
+  HistoryStatus,
+  RemoteCursor,
+} from "../types";
 import { applyOperation } from "../lib/operations";
 import { getPresenceColor, sortActiveUsers } from "../lib/presence";
 import { throttle } from "../lib/throttle";
+import { setToken } from "../api";
 
 type SocketStatus = "connecting" | "connected" | "disconnected";
+
+type PendingSocketMessage = {
+  op: CanvasOperation;
+  payload: string;
+};
 
 type SnapshotMessage = {
   type: "snapshot";
@@ -12,12 +25,14 @@ type SnapshotMessage = {
   revision: number;
   state: CanvasState;
   users: ActiveUser[];
+  history: HistoryStatus;
 };
 
 type AppliedMessage = {
   type: "op_applied";
   revision: number;
   op: CanvasOperation;
+  history: HistoryStatus;
 };
 
 type PreviewMessage = {
@@ -51,6 +66,8 @@ type ServerMessage =
   | PresenceJoinMessage
   | PresenceLeaveMessage
   | { type: "access_removed"; message: string }
+  | { type: "session_expired"; message: string }
+  | { type: "history_status"; history: HistoryStatus }
   | { type: "error"; message: string };
 
 export function useCanvasSocket(canvasId: string, token: string | null) {
@@ -60,8 +77,12 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [accessMessage, setAccessMessage] = useState<string | null>(null);
+  const [historyStatus, setHistoryStatus] = useState<HistoryStatus>({
+    canUndo: false,
+    canRedo: false,
+  });
   const wsRef = useRef<WebSocket | null>(null);
-  const pendingOps = useRef<CanvasOperation[]>([]);
+  const pendingOps = useRef<PendingSocketMessage[]>([]);
   const seenOpIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -85,8 +106,8 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
 
       ws.onopen = () => {
         setStatus("connected");
-        for (const op of pendingOps.current) {
-          ws.send(JSON.stringify({ type: "op", op }));
+        for (const message of pendingOps.current) {
+          ws.send(message.payload);
         }
       };
 
@@ -96,12 +117,16 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
           setState(message.state);
           setRevision(message.revision);
           setActiveUsers(sortActiveUsers(message.users));
+          setHistoryStatus(message.history);
           pendingOps.current = [];
           seenOpIds.current.clear();
         }
         if (message.type === "op_applied") {
           setRevision(message.revision);
-          pendingOps.current = pendingOps.current.filter((op) => op.id !== message.op.id);
+          setHistoryStatus(message.history);
+          pendingOps.current = pendingOps.current.filter(
+            (pending) => pending.op.id !== message.op.id,
+          );
           if (seenOpIds.current.has(message.op.id)) {
             return;
           }
@@ -147,6 +172,19 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
           setAccessMessage(message.message);
           setStatus("disconnected");
           ws.close(1008);
+        }
+        if (message.type === "session_expired") {
+          shouldReconnect = false;
+          setToken(null);
+          pendingOps.current = [];
+          setActiveUsers([]);
+          setRemoteCursors({});
+          setAccessMessage(message.message);
+          setStatus("disconnected");
+          ws.close(1008);
+        }
+        if (message.type === "history_status") {
+          setHistoryStatus(message.history);
         }
       };
 
@@ -207,13 +245,48 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
       return;
     }
     seenOpIds.current.add(op.id);
-    pendingOps.current.push(op);
-    setState((current) => applyOperation(current, op));
     const payload = JSON.stringify({ type: "op", op });
+    pendingOps.current.push({ op, payload });
+    setState((current) => applyOperation(current, op));
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(payload);
     }
   }, [accessMessage]);
+
+  const sendHistoryEntry = useCallback((entry: HistoryEntry) => {
+    if (accessMessage) {
+      return;
+    }
+    seenOpIds.current.add(entry.forward.id);
+    const payload = JSON.stringify({
+      type: "op",
+      op: entry.forward,
+      history: { inverse: entry.inverse },
+    });
+    pendingOps.current.push({ op: entry.forward, payload });
+    setState((current) => applyOperation(current, entry.forward));
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(payload);
+    }
+  }, [accessMessage]);
+
+  const requestUndo = useCallback(() => {
+    if (accessMessage || !historyStatus.canUndo) {
+      return;
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "undo" }));
+    }
+  }, [accessMessage, historyStatus.canUndo]);
+
+  const requestRedo = useCallback(() => {
+    if (accessMessage || !historyStatus.canRedo) {
+      return;
+    }
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: "redo" }));
+    }
+  }, [accessMessage, historyStatus.canRedo]);
 
   const sendPreviewOperation = useCallback((op: CanvasOperation) => {
     if (accessMessage) {
@@ -243,10 +316,14 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
     activeUsers,
     remoteCursors: Object.values(remoteCursors),
     accessMessage,
+    historyStatus,
     setLocalState: setState,
     sendOperation,
+    sendHistoryEntry,
     sendPreviewOperation,
     sendCursor,
+    requestUndo,
+    requestRedo,
   };
 }
 

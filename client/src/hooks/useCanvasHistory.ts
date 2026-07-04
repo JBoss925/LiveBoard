@@ -1,62 +1,47 @@
-import { useRef, useState } from "react";
-import { makeOperationId } from "../lib/operations";
-import type { CanvasOperation, HistoryEntry } from "../types";
+import { useState } from "react";
+import type { HistoryEntry, HistoryStatus } from "../types";
 
 type UseCanvasHistoryOptions = {
-  sendOperation: (op: CanvasOperation) => void;
+  historyStatus: HistoryStatus;
+  requestRedo: () => void;
+  requestUndo: () => void;
+  sendHistoryEntry: (entry: HistoryEntry) => void;
 };
 
-export function useCanvasHistory({ sendOperation }: UseCanvasHistoryOptions) {
-  const undoStack = useRef<HistoryEntry[]>([]);
-  const redoStack = useRef<HistoryEntry[]>([]);
+export function useCanvasHistory({
+  historyStatus,
+  requestRedo,
+  requestUndo,
+  sendHistoryEntry,
+}: UseCanvasHistoryOptions) {
   const [version, setVersion] = useState(0);
 
   function touchHistory() {
     setVersion((current) => current + 1);
   }
 
-  function pushHistory(entry: HistoryEntry) {
-    undoStack.current.push(entry);
-    redoStack.current = [];
+  function sendWithHistory(entry: HistoryEntry) {
+    sendHistoryEntry(entry);
     touchHistory();
   }
 
-  function sendWithHistory(entry: HistoryEntry) {
-    sendOperation(entry.forward);
-    pushHistory(entry);
-  }
-
   function undo() {
-    const entry = undoStack.current.pop();
-    if (!entry) {
-      return;
-    }
-    sendOperation(reissueOperation(entry.inverse));
-    redoStack.current.push(entry);
+    requestUndo();
     touchHistory();
   }
 
   function redo() {
-    const entry = redoStack.current.pop();
-    if (!entry) {
-      return;
-    }
-    sendOperation(reissueOperation(entry.forward));
-    undoStack.current.push(entry);
+    requestRedo();
     touchHistory();
   }
 
   return {
-    canUndo: undoStack.current.length > 0,
-    canRedo: redoStack.current.length > 0,
-    pushHistory,
+    canUndo: historyStatus.canUndo,
+    canRedo: historyStatus.canRedo,
+    pushHistory: sendWithHistory,
     redo,
     sendWithHistory,
     undo,
     version,
   };
-}
-
-function reissueOperation(op: CanvasOperation): CanvasOperation {
-  return { ...op, id: makeOperationId() } as CanvasOperation;
 }

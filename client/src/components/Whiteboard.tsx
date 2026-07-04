@@ -32,7 +32,12 @@ type TextEditState = {
 
 export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
   const socket = useCanvasSocket(canvasId, token);
-  const history = useCanvasHistory({ sendOperation: socket.sendOperation });
+  const history = useCanvasHistory({
+    historyStatus: socket.historyStatus,
+    requestRedo: socket.requestRedo,
+    requestUndo: socket.requestUndo,
+    sendHistoryEntry: socket.sendHistoryEntry,
+  });
   const liveUpdates = useLiveShapeUpdates({
     sendPreviewOperation: socket.sendPreviewOperation,
   });
@@ -78,7 +83,6 @@ export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
     tool,
     userId: user.id,
     sendCursor: socket.sendCursor,
-    sendOperation: socket.sendOperation,
     onStartTextEdit: startTextEdit,
   });
 

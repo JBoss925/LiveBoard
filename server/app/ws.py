@@ -1,13 +1,19 @@
+import asyncio
 import json
 from collections import defaultdict
+from contextlib import suppress
 from typing import Any
+from uuid import uuid4
 
+import asyncpg
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 from app.auth import get_user_by_token
-from app.canvas_ops import apply_operation, normalize_state
+from app.canvas_ops import apply_operation, invert_operation, normalize_state
 from app.db import get_pool
+
+SESSION_RECHECK_SECONDS = 30
 
 
 class CanvasRoomManager:
@@ -103,6 +109,18 @@ def decode_state(value: Any) -> dict[str, Any]:
     return normalize_state(value)
 
 
+def decode_op(value: Any) -> dict[str, Any]:
+    if isinstance(value, str):
+        return json.loads(value)
+    if isinstance(value, dict):
+        return dict(value)
+    return {}
+
+
+def history_status_from_counts(undo_count: int, redo_count: int) -> dict[str, bool]:
+    return {"canUndo": undo_count > 0, "canRedo": redo_count > 0}
+
+
 async def is_canvas_member(canvas_id: str, user_id: str) -> bool:
     pool = await get_pool()
     async with pool.acquire() as conn:
@@ -118,9 +136,53 @@ async def is_canvas_member(canvas_id: str, user_id: str) -> bool:
     return value == 1
 
 
+async def get_history_status(canvas_id: str) -> dict[str, bool]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        return await get_history_status_for_conn(conn, canvas_id)
+
+
+async def get_history_status_for_conn(
+    conn: asyncpg.Connection, canvas_id: str
+) -> dict[str, bool]:
+    row = await conn.fetchrow(
+        """
+        SELECT
+          COUNT(*) FILTER (WHERE undone_at IS NULL) AS undo_count,
+          COUNT(*) FILTER (WHERE undone_at IS NOT NULL) AS redo_count
+        FROM canvas_history
+        WHERE canvas_id = $1
+        """,
+        canvas_id,
+    )
+    if row is None:
+        return history_status_from_counts(0, 0)
+    return history_status_from_counts(int(row["undo_count"]), int(row["redo_count"]))
+
+
+async def insert_canvas_op(
+    conn: asyncpg.Connection,
+    canvas_id: str,
+    user_id: str,
+    revision: int,
+    op: dict[str, Any],
+) -> None:
+    await conn.execute(
+        """
+        INSERT INTO canvas_ops (id, canvas_id, user_id, revision, op)
+        VALUES ($1, $2, $3, $4, $5::jsonb)
+        """,
+        op.get("id"),
+        canvas_id,
+        user_id,
+        revision,
+        json.dumps(op),
+    )
+
+
 async def apply_and_persist_operation(
     canvas_id: str, user_id: str, op: dict[str, Any]
-) -> tuple[int, dict[str, Any], bool]:
+) -> tuple[int, dict[str, Any], bool, dict[str, bool]]:
     pool = await get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -133,7 +195,12 @@ async def apply_and_persist_operation(
                 state_value = await conn.fetchval(
                     "SELECT state FROM canvases WHERE id = $1", canvas_id
                 )
-                return int(existing_revision), decode_state(state_value), False
+                return (
+                    int(existing_revision),
+                    decode_state(state_value),
+                    False,
+                    await get_history_status_for_conn(conn, canvas_id),
+                )
 
             row = await conn.fetchrow(
                 "SELECT state, revision FROM canvases WHERE id = $1 FOR UPDATE",
@@ -154,18 +221,188 @@ async def apply_and_persist_operation(
                 next_revision,
                 canvas_id,
             )
+            await insert_canvas_op(conn, canvas_id, user_id, next_revision, op)
+            return (
+                next_revision,
+                next_state,
+                True,
+                await get_history_status_for_conn(conn, canvas_id),
+            )
+
+
+async def apply_and_record_history(
+    canvas_id: str,
+    user_id: str,
+    forward_op: dict[str, Any],
+) -> tuple[int, dict[str, Any], dict[str, bool]]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            existing_revision = await conn.fetchval(
+                "SELECT revision FROM canvas_ops WHERE id = $1 AND canvas_id = $2",
+                forward_op.get("id"),
+                canvas_id,
+            )
+            if existing_revision is not None:
+                state_value = await conn.fetchval(
+                    "SELECT state FROM canvases WHERE id = $1", canvas_id
+                )
+                return (
+                    int(existing_revision),
+                    decode_state(state_value),
+                    await get_history_status_for_conn(conn, canvas_id),
+                )
+
+            row = await conn.fetchrow(
+                "SELECT state, revision FROM canvases WHERE id = $1 FOR UPDATE",
+                canvas_id,
+            )
+            if row is None:
+                raise ValueError("Canvas not found")
+
+            state = decode_state(row["state"])
+            inverse_op = invert_operation(state, forward_op)
+            if inverse_op is None:
+                raise ValueError("Invalid operation")
+            next_state = apply_operation(state, forward_op)
+            next_revision = int(row["revision"]) + 1
             await conn.execute(
                 """
-                INSERT INTO canvas_ops (id, canvas_id, user_id, revision, op)
-                VALUES ($1, $2, $3, $4, $5::jsonb)
+                UPDATE canvases
+                SET state = $1::jsonb, revision = $2, updated_at = NOW()
+                WHERE id = $3
                 """,
-                op.get("id"),
+                json.dumps(next_state),
+                next_revision,
+                canvas_id,
+            )
+            await conn.execute(
+                "DELETE FROM canvas_history WHERE canvas_id = $1 AND undone_at IS NOT NULL",
+                canvas_id,
+            )
+            await insert_canvas_op(conn, canvas_id, user_id, next_revision, forward_op)
+            await conn.execute(
+                """
+                INSERT INTO canvas_history
+                  (id, canvas_id, user_id, forward_op, inverse_op, applied_revision)
+                VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6)
+                """,
+                str(uuid4()),
                 canvas_id,
                 user_id,
+                json.dumps(forward_op),
+                json.dumps(inverse_op),
                 next_revision,
-                json.dumps(op),
             )
-            return next_revision, next_state, True
+            return next_revision, next_state, await get_history_status_for_conn(conn, canvas_id)
+
+
+async def apply_history_action(
+    canvas_id: str, user_id: str, action: str
+) -> tuple[int, dict[str, Any], dict[str, Any] | None, dict[str, bool]]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            row = await conn.fetchrow(
+                "SELECT state, revision FROM canvases WHERE id = $1 FOR UPDATE",
+                canvas_id,
+            )
+            if row is None:
+                raise ValueError("Canvas not found")
+
+            if action == "undo":
+                history_row = await conn.fetchrow(
+                    """
+                    SELECT id, inverse_op AS op
+                    FROM canvas_history
+                    WHERE canvas_id = $1 AND undone_at IS NULL
+                    ORDER BY applied_revision DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    """,
+                    canvas_id,
+                )
+            else:
+                history_row = await conn.fetchrow(
+                    """
+                    SELECT id, forward_op AS op
+                    FROM canvas_history
+                    WHERE canvas_id = $1 AND undone_at IS NOT NULL
+                    ORDER BY undone_at DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    """,
+                    canvas_id,
+                )
+
+            if history_row is None:
+                return (
+                    int(row["revision"]),
+                    decode_state(row["state"]),
+                    None,
+                    await get_history_status_for_conn(conn, canvas_id),
+                )
+
+            op = decode_op(history_row["op"])
+            op["id"] = str(uuid4())
+            state = decode_state(row["state"])
+            next_state = apply_operation(state, op)
+            next_revision = int(row["revision"]) + 1
+            await conn.execute(
+                """
+                UPDATE canvases
+                SET state = $1::jsonb, revision = $2, updated_at = NOW()
+                WHERE id = $3
+                """,
+                json.dumps(next_state),
+                next_revision,
+                canvas_id,
+            )
+            await insert_canvas_op(conn, canvas_id, user_id, next_revision, op)
+
+            if action == "undo":
+                await conn.execute(
+                    "UPDATE canvas_history SET undone_at = NOW() WHERE id = $1",
+                    history_row["id"],
+                )
+            else:
+                await conn.execute(
+                    """
+                    UPDATE canvas_history
+                    SET undone_at = NULL, applied_revision = $2
+                    WHERE id = $1
+                    """,
+                    history_row["id"],
+                    next_revision,
+                )
+
+            return next_revision, next_state, op, await get_history_status_for_conn(
+                conn, canvas_id
+            )
+
+
+async def close_if_session_invalid(
+    ws: WebSocket, canvas_id: str, user_id: str, token: str
+) -> bool:
+    if await get_user_by_token(token) is None:
+        await ws.send_json(
+            {
+                "type": "session_expired",
+                "message": "Your session has expired. Please sign in again.",
+            }
+        )
+        await ws.close(code=1008)
+        return True
+    if not await is_canvas_member(canvas_id, user_id):
+        await ws.send_json(
+            {
+                "type": "access_removed",
+                "message": "Your access to this canvas has been removed.",
+            }
+        )
+        await ws.close(code=1008)
+        return True
+    return False
 
 
 async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
@@ -197,20 +434,28 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
             "revision": int(canvas["revision"]),
             "state": decode_state(canvas["state"]),
             "users": manager.active_users(canvas_id),
+            "history": await get_history_status(canvas_id),
         }
     )
 
     try:
         while True:
-            message = json.loads(await ws.receive_text())
-            if not await is_canvas_member(canvas_id, user["id"]):
-                await ws.send_json(
-                    {
-                        "type": "access_removed",
-                        "message": "Your access to this canvas has been removed.",
-                    }
-                )
-                await ws.close(code=1008)
+            receive_task = asyncio.create_task(ws.receive_text())
+            _done, pending = await asyncio.wait(
+                {receive_task},
+                timeout=SESSION_RECHECK_SECONDS,
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            if receive_task in pending:
+                receive_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await receive_task
+                if await close_if_session_invalid(ws, canvas_id, user["id"], token):
+                    return
+                continue
+
+            message = json.loads(receive_task.result())
+            if await close_if_session_invalid(ws, canvas_id, user["id"], token):
                 return
             if message.get("type") == "cursor":
                 await manager.broadcast(
@@ -244,9 +489,19 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                 if not isinstance(op, dict) or not isinstance(op.get("id"), str):
                     await ws.send_json({"type": "error", "message": "Invalid operation"})
                     continue
-                revision, _state, _changed = await apply_and_persist_operation(
-                    canvas_id, user["id"], op
-                )
+                history = message.get("history")
+                try:
+                    if isinstance(history, dict) and isinstance(history.get("inverse"), dict):
+                        revision, _state, history_status = await apply_and_record_history(
+                            canvas_id, user["id"], op
+                        )
+                    else:
+                        revision, _state, _changed, history_status = (
+                            await apply_and_persist_operation(canvas_id, user["id"], op)
+                        )
+                except ValueError:
+                    await ws.send_json({"type": "error", "message": "Invalid operation"})
+                    continue
                 await manager.broadcast(
                     canvas_id,
                     {
@@ -255,6 +510,25 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                         "revision": revision,
                         "userId": user["id"],
                         "op": op,
+                        "history": history_status,
+                    },
+                )
+            elif message.get("type") in {"undo", "redo"}:
+                revision, _state, op, history_status = await apply_history_action(
+                    canvas_id, user["id"], message["type"]
+                )
+                if op is None:
+                    await ws.send_json({"type": "history_status", "history": history_status})
+                    continue
+                await manager.broadcast(
+                    canvas_id,
+                    {
+                        "type": "op_applied",
+                        "canvasId": canvas_id,
+                        "revision": revision,
+                        "userId": user["id"],
+                        "op": op,
+                        "history": history_status,
                     },
                 )
     except (WebSocketDisconnect, json.JSONDecodeError):

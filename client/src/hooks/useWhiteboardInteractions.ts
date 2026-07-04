@@ -50,7 +50,6 @@ type UseWhiteboardInteractionsOptions = {
   tool: Tool;
   userId: string;
   sendCursor: (x: number, y: number, selectedShapeId: string | null) => void;
-  sendOperation: (op: HistoryEntry["forward"]) => void;
   onStartTextEdit: (shape: Shape) => void;
 };
 
@@ -71,7 +70,6 @@ export function useWhiteboardInteractions({
   tool,
   userId,
   sendCursor,
-  sendOperation,
   onStartTextEdit,
 }: UseWhiteboardInteractionsOptions) {
   const interaction = useRef<Interaction>(defaultInteraction);
@@ -268,7 +266,6 @@ export function useWhiteboardInteractions({
       return;
     }
 
-    sendOperation(entry.forward);
     history.pushHistory(entry);
   }
 
