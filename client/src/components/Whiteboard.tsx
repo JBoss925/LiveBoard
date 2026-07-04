@@ -14,7 +14,6 @@ import { CanvasSvg } from "./whiteboard/CanvasSvg";
 
 type WhiteboardProps = {
   canvasId: string;
-  token: string | null;
   user: User;
   onBack: () => void;
 };
@@ -30,8 +29,8 @@ type TextEditState = {
   value: string;
 };
 
-export function Whiteboard({ canvasId, token, user, onBack }: WhiteboardProps) {
-  const socket = useCanvasSocket(canvasId, token);
+export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
+  const socket = useCanvasSocket(canvasId);
   const history = useCanvasHistory({
     historyStatus: socket.historyStatus,
     requestRedo: socket.requestRedo,

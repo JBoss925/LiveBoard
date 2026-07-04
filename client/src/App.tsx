@@ -61,7 +61,6 @@ export default function App() {
     return (
       <Whiteboard
         canvasId={screen.canvasId}
-        token={null}
         user={user}
         onBack={() => setScreen({ name: "dashboard" })}
       />

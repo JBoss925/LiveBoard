@@ -9,7 +9,7 @@ import asyncpg
 from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
-from app.auth import get_user_by_token
+from app.auth import SESSION_COOKIE_NAME, get_user_by_token
 from app.canvas_ops import apply_operation, invert_operation, normalize_state
 from app.db import get_pool
 
@@ -406,7 +406,7 @@ async def close_if_session_invalid(
 
 
 async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
-    token = ws.query_params.get("token", "")
+    token = ws.cookies.get(SESSION_COOKIE_NAME, "")
     user_row = await get_user_by_token(token)
     if user_row is None or not await is_canvas_member(canvas_id, user_row["id"]):
         await ws.close(code=1008)

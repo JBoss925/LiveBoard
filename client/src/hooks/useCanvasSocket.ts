@@ -69,7 +69,7 @@ type ServerMessage =
   | { type: "history_status"; history: HistoryStatus }
   | { type: "error"; message: string };
 
-export function useCanvasSocket(canvasId: string, token: string | null) {
+export function useCanvasSocket(canvasId: string) {
   const [status, setStatus] = useState<SocketStatus>("connecting");
   const [state, setState] = useState<CanvasState>({ shapes: [] });
   const [revision, setRevision] = useState(0);
@@ -85,20 +85,13 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
   const seenOpIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
-    if (!token) {
-      setStatus("disconnected");
-      setActiveUsers([]);
-      setRemoteCursors({});
-      return undefined;
-    }
-
     let shouldReconnect = true;
     let reconnectTimer: number | undefined;
     setAccessMessage(null);
 
     const connect = () => {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const url = `${protocol}//${window.location.host}/ws/canvases/${canvasId}?token=${encodeURIComponent(token)}`;
+      const url = `${protocol}//${window.location.host}/ws/canvases/${canvasId}`;
       const ws = new WebSocket(url);
       wsRef.current = ws;
       setStatus("connecting");
@@ -223,7 +216,7 @@ export function useCanvasSocket(canvasId: string, token: string | null) {
       }
       wsRef.current = null;
     };
-  }, [canvasId, token]);
+  }, [canvasId]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
