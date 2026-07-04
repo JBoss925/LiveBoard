@@ -18,6 +18,7 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-whiteboard}:${POSTGRES_PASSWORD:-whiteboard}@db:5432/${POSTGRES_DB:-whiteboard}
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
     depends_on:
       - db
 

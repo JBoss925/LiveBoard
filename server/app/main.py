@@ -7,6 +7,7 @@ from app.db import close_pool, get_pool, init_db
 from app.rate_limit import RateLimitMiddleware
 from app.routes_auth import router as auth_router
 from app.routes_canvases import router as canvases_router
+from app.security import SameOriginMiddleware
 from app.ws import canvas_ws
 
 
@@ -18,6 +19,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(SameOriginMiddleware)
 app.add_middleware(RateLimitMiddleware)
 app.include_router(auth_router)
 app.include_router(canvases_router)
