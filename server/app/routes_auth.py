@@ -97,7 +97,6 @@ async def login(payload: LoginRequest, response: Response) -> AuthResponse:
 @router.post("/api/auth/logout")
 async def logout(
     response: Response,
-    user: CurrentUser,
     session_cookie: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
 ) -> dict:
     if session_cookie:
