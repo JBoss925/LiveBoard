@@ -91,6 +91,28 @@ Request:
 
 Response is one `CanvasSummary`.
 
+#### `PATCH /api/canvases/{canvas_id}`
+
+Owner-only. Renames a canvas.
+
+Request:
+
+```json
+{ "name": "Planning Board" }
+```
+
+Response is one `CanvasSummary`.
+
+#### `DELETE /api/canvases/{canvas_id}`
+
+Owner-only. Deletes the canvas and cascades dependent memberships, operations, and history rows.
+
+Response:
+
+```json
+{ "ok": true }
+```
+
 #### `GET /api/canvases/{canvas_id}`
 
 Response:

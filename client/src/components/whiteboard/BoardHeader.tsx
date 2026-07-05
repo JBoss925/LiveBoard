@@ -1,4 +1,5 @@
 import { ArrowLeft, Users } from "lucide-react";
+import { KeyboardEvent, useEffect, useRef, useState } from "react";
 import { getPresenceColor } from "../../lib/presence";
 import type { ActiveUser, User } from "../../types";
 
@@ -7,9 +8,12 @@ type BoardHeaderProps = {
   canvasName: string;
   connected: boolean;
   loading: boolean;
+  ownerId: string | null;
+  renaming: boolean;
   revision: number;
   user: User;
   onBack: () => void;
+  onRename: (name: string) => void;
   onOpenShare: () => void;
 };
 
@@ -18,11 +22,47 @@ export function BoardHeader({
   canvasName,
   connected,
   loading,
+  ownerId,
+  renaming,
   revision,
   user,
   onBack,
+  onRename,
   onOpenShare,
 }: BoardHeaderProps) {
+  const [draftName, setDraftName] = useState(canvasName);
+  const skipNextCommitRef = useRef(false);
+  const canRename = !loading && ownerId === user.id;
+
+  useEffect(() => {
+    setDraftName(canvasName);
+  }, [canvasName]);
+
+  function commitRename() {
+    if (skipNextCommitRef.current) {
+      skipNextCommitRef.current = false;
+      setDraftName(canvasName);
+      return;
+    }
+    const nextName = draftName.trim();
+    if (nextName && nextName !== canvasName) {
+      onRename(nextName);
+    } else {
+      setDraftName(canvasName);
+    }
+  }
+
+  function handleTitleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    }
+    if (event.key === "Escape") {
+      skipNextCommitRef.current = true;
+      setDraftName(canvasName);
+      event.currentTarget.blur();
+    }
+  }
+
   return (
     <header className="board-header">
       <div>
@@ -37,7 +77,20 @@ export function BoardHeader({
         </button>
         <div>
           <p className="eyebrow">Canvas</p>
-          {loading ? <span className="title-skeleton" /> : <h1>{canvasName}</h1>}
+          {loading ? (
+            <span className="title-skeleton" />
+          ) : (
+            <input
+              aria-label="Canvas title"
+              className="board-title-input"
+              disabled={!canRename || renaming}
+              onBlur={commitRename}
+              onChange={(event) => setDraftName(event.target.value)}
+              onKeyDown={handleTitleKeyDown}
+              title={canRename ? "Rename canvas" : "Only the owner can rename this canvas"}
+              value={draftName}
+            />
+          )}
         </div>
       </div>
       <div className="board-meta">

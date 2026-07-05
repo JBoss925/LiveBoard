@@ -99,6 +99,19 @@ export function createCanvas(name: string): Promise<CanvasSummary> {
   });
 }
 
+export function deleteCanvas(canvasId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/canvases/${canvasId}`, {
+    method: "DELETE",
+  });
+}
+
+export function renameCanvas(canvasId: string, name: string): Promise<CanvasSummary> {
+  return request<CanvasSummary>(`/api/canvases/${canvasId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+
 export function getCanvas(canvasId: string): Promise<CanvasDetail> {
   return request<CanvasDetail>(`/api/canvases/${canvasId}`);
 }

@@ -23,8 +23,9 @@ The frontend does not read or write session tokens.
 | Component | Responsibility |
 |---|---|
 | `AuthScreen` | Login/signup form |
-| `Dashboard` | Create canvas and list accessible canvases |
-| `CanvasList` | Canvas list and loading skeleton |
+| `Dashboard` | List accessible canvases, create canvases, manage multi-selection, open row context menus, share canvases, rename owned canvases, and delete owned canvases |
+| `CanvasList` | Selectable canvas rows and loading skeleton |
+| `RenameCanvasModal` | Google Drive style canvas rename dialog |
 | `Whiteboard` | Main board orchestrator |
 | `Toolbar` | Tool and style controls |
 | `ShareModal` | Member list, invite, remove access |
@@ -44,6 +45,7 @@ Current icon usage includes:
 - edit actions: undo, redo, delete
 - navigation/sharing: back, share/collaborators, close
 - dashboard actions: refresh, logout, create
+- dashboard list actions: select all, delete selected, context-menu open/share/rename/delete
 - context menu actions: bring/send ordering and delete
 
 Icon-only buttons must include:

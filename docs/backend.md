@@ -91,6 +91,14 @@ Returns canvases where current user appears in `canvas_members`.
 
 Creates canvas with empty state and inserts creator as member/owner.
 
+### `PATCH /api/canvases/{canvas_id}`
+
+Requires owner. Validates and updates the canvas name, then returns the updated summary.
+
+### `DELETE /api/canvases/{canvas_id}`
+
+Requires owner. Deletes the canvas row, relies on database cascades for memberships, operations, and history, and disconnects live sockets for that canvas with a deletion message.
+
 ### `GET /api/canvases/{canvas_id}`
 
 Requires membership and returns summary plus durable canvas state.

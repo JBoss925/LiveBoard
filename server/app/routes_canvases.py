@@ -16,6 +16,7 @@ from app.schemas import (
     CanvasCreateRequest,
     CanvasDetail,
     CanvasMembersResponse,
+    CanvasRenameRequest,
     CanvasSummary,
     InviteRequest,
     InviteResponse,
@@ -74,6 +75,41 @@ async def get_canvas(canvas_id: str, user: CurrentUser) -> CanvasDetail:
     row = await require_canvas_member(canvas_id, user["id"])
     summary = canvas_summary(row)
     return CanvasDetail(**summary.model_dump(), state=decode_state(row["state"]))
+
+
+@router.patch("/api/canvases/{canvas_id}", response_model=CanvasSummary)
+async def rename_canvas(
+    canvas_id: str, payload: CanvasRenameRequest, user: CurrentUser
+) -> CanvasSummary:
+    await require_canvas_owner(canvas_id, user["id"])
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            UPDATE canvases
+            SET name = $1, updated_at = NOW()
+            WHERE id = $2
+            RETURNING id, name, owner_id, revision, updated_at
+            """,
+            validate_canvas_name(payload.name),
+            canvas_id,
+        )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Canvas not found")
+    return canvas_summary(row)
+
+
+@router.delete("/api/canvases/{canvas_id}")
+async def delete_canvas(canvas_id: str, user: CurrentUser) -> dict[str, bool]:
+    await require_canvas_owner(canvas_id, user["id"])
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        result = await conn.execute("DELETE FROM canvases WHERE id = $1", canvas_id)
+
+    if result == "DELETE 0":
+        raise HTTPException(status_code=404, detail="Canvas not found")
+    await manager.close_canvas(canvas_id, "This canvas has been deleted.")
+    return {"ok": True}
 
 
 @router.get("/api/canvases/{canvas_id}/members", response_model=CanvasMembersResponse)

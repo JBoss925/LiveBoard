@@ -1,11 +1,32 @@
+import { FileText } from "lucide-react";
+import type { MouseEvent } from "react";
 import type { CanvasSummary } from "../types";
 
 type CanvasListProps = {
   canvases: CanvasSummary[];
+  selectedIds: Set<string>;
+  currentUserId: string;
   onOpen: (canvasId: string) => void;
+  onContextMenu: (canvas: CanvasSummary, event: MouseEvent<HTMLDivElement>) => void;
+  onSelect: (canvasId: string, event: MouseEvent<HTMLButtonElement>) => void;
 };
 
-export function CanvasList({ canvases, onOpen }: CanvasListProps) {
+export function CanvasList({
+  canvases,
+  selectedIds,
+  currentUserId,
+  onOpen,
+  onContextMenu,
+  onSelect,
+}: CanvasListProps) {
+  function handleRowClick(canvasId: string, event: MouseEvent<HTMLButtonElement>) {
+    onSelect(canvasId, event);
+  }
+
+  function handleRowDoubleClick(canvasId: string) {
+    onOpen(canvasId);
+  }
+
   if (canvases.length === 0) {
     return (
       <div className="empty-state">
@@ -18,18 +39,30 @@ export function CanvasList({ canvases, onOpen }: CanvasListProps) {
   return (
     <div className="canvas-list">
       {canvases.map((canvas) => (
-        <button
-          className="canvas-row"
+        <div
+          aria-selected={selectedIds.has(canvas.id)}
+          className={`canvas-row ${selectedIds.has(canvas.id) ? "selected" : ""}`}
           key={canvas.id}
-          onClick={() => onOpen(canvas.id)}
-          type="button"
+          onContextMenu={(event) => onContextMenu(canvas, event)}
+          role="row"
         >
-          <span>
-            <strong>{canvas.name}</strong>
-            <small>Revision {canvas.revision}</small>
-          </span>
+          <button
+            className="canvas-open-button"
+            onClick={(event) => handleRowClick(canvas.id, event)}
+            onDoubleClick={() => handleRowDoubleClick(canvas.id)}
+            type="button"
+          >
+            <FileText aria-hidden="true" size={18} />
+            <span>
+              <strong>{canvas.name}</strong>
+              <small>
+                Revision {canvas.revision}
+                {canvas.ownerId === currentUserId ? " - Owner" : " - Shared"}
+              </small>
+            </span>
+          </button>
           <time>{new Date(canvas.updatedAt).toLocaleString()}</time>
-        </button>
+        </div>
       ))}
     </div>
   );

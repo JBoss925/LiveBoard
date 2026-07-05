@@ -3,6 +3,7 @@
   grid-template-rows: auto minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
+  position: relative;
 }
 
 .board-header,
@@ -22,6 +23,47 @@
   align-items: center;
   display: flex;
   gap: 14px;
+  min-width: 0;
+}
+
+.board-header > div:first-child > div {
+  min-width: 0;
+}
+
+.board-title-input {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+  max-width: min(460px, 42vw);
+  padding: 1px 4px;
+  text-overflow: ellipsis;
+}
+
+.board-title-input:enabled:hover,
+.board-title-input:enabled:focus {
+  background: var(--surface);
+  border-color: var(--border-strong);
+}
+
+.board-title-input:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.board-error-banner {
+  background: #fff6f6;
+  border: 1px solid rgba(230, 57, 70, 0.35);
+  border-radius: 6px;
+  color: var(--strawberry-red);
+  left: 50%;
+  padding: 8px 12px;
+  position: absolute;
+  top: 72px;
+  transform: translateX(-50%);
+  z-index: 30;
 }
 
 .board-meta {

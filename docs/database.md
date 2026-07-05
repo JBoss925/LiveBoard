@@ -108,7 +108,9 @@ Stores durable canvas metadata and the current canvas state.
 | `state` | JSONB object with top-level `shapes` array |
 | `revision` | monotonically increasing persisted revision |
 | `created_at` | database timestamp |
-| `updated_at` | updated on durable operation |
+| `updated_at` | updated on durable operation or rename |
+
+Deleting a canvas removes dependent `canvas_members`, `canvas_ops`, and `canvas_history` rows through foreign-key cascades.
 
 Current state example:
 

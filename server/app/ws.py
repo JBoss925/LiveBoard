@@ -85,6 +85,19 @@ class CanvasRoomManager:
             finally:
                 await self.disconnect(canvas_id, client)
 
+    async def close_canvas(self, canvas_id: str, message: str) -> None:
+        """Notify and disconnect every live socket for a canvas that no longer exists."""
+        clients = list(self.rooms.get(canvas_id, set()))
+        for client in clients:
+            try:
+                if client.client_state == WebSocketState.CONNECTED:
+                    await client.send_json({"type": "access_removed", "message": message})
+                    await client.close(code=1008)
+            except (RuntimeError, WebSocketDisconnect):
+                pass
+            finally:
+                await self.disconnect(canvas_id, client)
+
     def active_users(self, canvas_id: str) -> list[dict[str, str]]:
         seen: set[str] = set()
         users: list[dict[str, str]] = []

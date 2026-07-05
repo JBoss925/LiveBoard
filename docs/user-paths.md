@@ -26,19 +26,50 @@
 
 ## Create Canvas
 
-1. Authenticated user enters a canvas name in the dashboard.
-2. Frontend calls `POST /api/canvases`.
+1. Authenticated user clicks the plus button in the dashboard canvas-list header.
+2. Frontend calls `POST /api/canvases` with the default name `Untitled canvas`.
 3. Backend validates the name, inserts `canvases` row with empty state, inserts owner into `canvas_members`, and returns summary.
-4. Frontend prepends the new canvas to local dashboard state and opens it.
+4. Frontend prepends the new canvas to local dashboard state, selects it, and opens the rename modal instead of entering the canvas.
+5. Owner enters a name and frontend calls `PATCH /api/canvases/{canvas_id}`.
+6. Backend validates ownership and name, updates `canvases.name`, and returns the updated summary.
+
+## Select And Delete Canvases
+
+1. User selects canvases from the dashboard list:
+   - single click selects one canvas
+   - Ctrl/Cmd-click toggles individual canvases
+   - Shift-click selects a contiguous block from the last selected anchor
+   - Ctrl/Cmd+A selects all canvases
+2. Frontend tracks selected canvas ids in dashboard-local React state.
+3. User clicks the delete button in the list header.
+4. Frontend only allows deletion when every selected canvas is owned by the current user.
+5. Frontend confirms the destructive action, then calls `DELETE /api/canvases/{canvas_id}` for each selected owned canvas.
+6. Backend requires owner, deletes the canvas row, database cascades dependent rows, and live sockets for that canvas receive a deletion message before closing.
+7. Frontend removes deleted canvases from the list and clears selection.
+
+## Dashboard Canvas Context Menu
+
+1. User right-clicks a canvas row.
+2. Frontend selects that row if it was not already selected and opens a compact context menu at the pointer.
+3. User can open the canvas, open the sharing modal for access management, rename the canvas, or delete the canvas.
+4. Rename and delete remain owner-only. Rename uses `PATCH /api/canvases/{canvas_id}` and delete uses `DELETE /api/canvases/{canvas_id}`.
 
 ## Open Canvas
 
-1. User clicks a canvas in the dashboard.
+1. User double-clicks a canvas in the dashboard.
 2. `Whiteboard` mounts and opens:
    - HTTP `GET /api/canvases/{canvas_id}` for name/owner metadata.
    - WebSocket `/ws/canvases/{canvas_id}` for realtime state.
 3. Backend verifies session and membership.
 4. WebSocket sends `snapshot` with current canvas state, revision, active users, and history status.
+
+## Rename Canvas In Whiteboard
+
+1. Owner clicks the canvas title in the whiteboard header.
+2. Title becomes an inline text input styled as the header title.
+3. Blur or Enter commits the new name through `PATCH /api/canvases/{canvas_id}`.
+4. Escape cancels local edits.
+5. Non-owners see the title but cannot edit it.
 
 ## Draw Shape
 

@@ -26,6 +26,10 @@ class CanvasCreateRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
 
 
+class CanvasRenameRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+
 class CanvasSummary(BaseModel):
     id: str
     name: str

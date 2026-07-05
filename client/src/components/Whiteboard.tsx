@@ -53,6 +53,8 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   const [canvasName, setCanvasName] = useState("Canvas");
   const [canvasOwnerId, setCanvasOwnerId] = useState<string | null>(null);
   const [canvasLoading, setCanvasLoading] = useState(true);
+  const [canvasRenameSaving, setCanvasRenameSaving] = useState(false);
+  const [canvasRenameError, setCanvasRenameError] = useState("");
   const [tool, setTool] = useState<Tool>("select");
   const [strokeColor, setStrokeColor] = useState("#1d3557");
   const [fillColor, setFillColor] = useState("#a8dadc");
@@ -107,6 +109,24 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
       })
       .finally(() => setCanvasLoading(false));
   }, [canvasId]);
+
+  async function renameCanvasTitle(name: string) {
+    if (canvasOwnerId !== user.id) {
+      setCanvasRenameError("Only the canvas owner can rename this canvas.");
+      return;
+    }
+
+    setCanvasRenameSaving(true);
+    setCanvasRenameError("");
+    try {
+      const canvas = await api.renameCanvas(canvasId, name);
+      setCanvasName(canvas.name);
+    } catch (err) {
+      setCanvasRenameError(err instanceof Error ? err.message : "Could not rename canvas");
+    } finally {
+      setCanvasRenameSaving(false);
+    }
+  }
 
   useEffect(() => {
     if (selectedId && !selectedShape) {
@@ -235,11 +255,15 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
         canvasName={canvasName}
         connected={socket.connected}
         loading={canvasLoading}
+        ownerId={canvasOwnerId}
+        renaming={canvasRenameSaving}
         revision={socket.revision}
         user={user}
         onBack={onBack}
+        onRename={(name) => void renameCanvasTitle(name)}
         onOpenShare={() => setShareOpen(true)}
       />
+      {canvasRenameError ? <div className="board-error-banner">{canvasRenameError}</div> : null}
 
       <div className="board-layout">
         <Toolbar
