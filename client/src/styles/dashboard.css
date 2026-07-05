@@ -171,8 +171,10 @@
   color: var(--strawberry-red);
 }
 
+.app-modal,
 .rename-modal {
   background: var(--surface);
+  border: 1px solid var(--border-strong);
   border-radius: 8px;
   box-shadow: 0 22px 60px rgba(29, 53, 87, 0.2);
   display: grid;
@@ -180,6 +182,39 @@
   max-width: min(420px, calc(100vw - 32px));
   padding: 22px;
   width: 100%;
+}
+
+.confirm-modal {
+  max-width: min(460px, calc(100vw - 32px));
+}
+
+.modal-header {
+  align-items: center;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.modal-icon {
+  align-items: center;
+  background: var(--surface-soft);
+  border-radius: 50%;
+  color: var(--steel-blue);
+  display: inline-flex;
+  height: 38px;
+  justify-content: center;
+  width: 38px;
+}
+
+.modal-icon.danger {
+  background: #fff1f1;
+  color: var(--strawberry-red);
+}
+
+.modal-body {
+  color: var(--deep-space-blue);
+  display: grid;
+  gap: 8px;
 }
 
 .rename-form {
@@ -191,6 +226,16 @@
   display: flex;
   gap: 10px;
   justify-content: flex-end;
+}
+
+.danger-action {
+  background: var(--strawberry-red);
+  border-color: var(--strawberry-red);
+  color: var(--surface);
+}
+
+.danger-action:hover:not(:disabled) {
+  border-color: #9f2f32;
 }
 
 .skeleton-row {

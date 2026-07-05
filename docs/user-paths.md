@@ -43,9 +43,10 @@
 2. Frontend tracks selected canvas ids in dashboard-local React state.
 3. User clicks the delete button in the list header.
 4. Frontend only allows deletion when every selected canvas is owned by the current user.
-5. Frontend confirms the destructive action, then calls `DELETE /api/canvases/{canvas_id}` for each selected owned canvas.
-6. Backend requires owner, deletes the canvas row, database cascades dependent rows, and live sockets for that canvas receive a deletion message before closing.
-7. Frontend removes deleted canvases from the list and clears selection.
+5. Frontend opens the reusable `ConfirmModal` for the destructive action.
+6. If the user confirms, frontend calls `DELETE /api/canvases/{canvas_id}` for each selected owned canvas.
+7. Backend requires owner, deletes the canvas row, database cascades dependent rows, and live sockets for that canvas receive a deletion message before closing.
+8. Frontend removes deleted canvases from the list and clears selection.
 
 ## Dashboard Canvas Context Menu
 

@@ -25,6 +25,7 @@ The frontend does not read or write session tokens.
 | `AuthScreen` | Login/signup form |
 | `Dashboard` | List accessible canvases, create canvases, manage multi-selection, open row context menus, share canvases, rename owned canvases, and delete owned canvases |
 | `CanvasList` | Selectable canvas rows and loading skeleton |
+| `ConfirmModal` | Reusable modal for destructive or high-impact confirmations |
 | `RenameCanvasModal` | Google Drive style canvas rename dialog |
 | `Whiteboard` | Main board orchestrator |
 | `Toolbar` | Tool and style controls |

@@ -11,6 +11,7 @@ import {
 import * as api from "../api";
 import type { CanvasSummary, User } from "../types";
 import { CanvasList, CanvasListLoading } from "./CanvasList";
+import { ConfirmModal } from "./ConfirmModal";
 import { RenameCanvasModal } from "./RenameCanvasModal";
 import { ShareModal } from "./ShareModal";
 
@@ -26,6 +27,10 @@ type DashboardContextMenu = {
   y: number;
 };
 
+type DeleteConfirmation = {
+  canvases: CanvasSummary[];
+};
+
 export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   const [canvases, setCanvases] = useState<CanvasSummary[]>([]);
   const [error, setError] = useState("");
@@ -37,6 +42,8 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   const [contextMenu, setContextMenu] = useState<DashboardContextMenu | null>(null);
   const [sharingCanvas, setSharingCanvas] = useState<CanvasSummary | null>(null);
   const [renamingCanvas, setRenamingCanvas] = useState<CanvasSummary | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] =
+    useState<DeleteConfirmation | null>(null);
   const [renameSaving, setRenameSaving] = useState(false);
   const [renameError, setRenameError] = useState("");
 
@@ -172,7 +179,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
     }
   }
 
-  async function deleteCanvases(canvasesToDelete: CanvasSummary[]) {
+  function requestDeleteCanvases(canvasesToDelete: CanvasSummary[]) {
     const ownedCanvases = canvasesToDelete.filter((canvas) => canvas.ownerId === user.id);
     if (ownedCanvases.length !== canvasesToDelete.length) {
       setError("Only canvas owners can delete canvases.");
@@ -181,19 +188,20 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
     if (ownedCanvases.length === 0) {
       return;
     }
-    const label = ownedCanvases.length === 1 ? "canvas" : "canvases";
-    const confirmed = window.confirm(
-      `Delete ${ownedCanvases.length} ${label}? This cannot be undone.`,
-    );
-    if (!confirmed) {
+    setError("");
+    setDeleteConfirmation({ canvases: ownedCanvases });
+  }
+
+  async function confirmDeleteCanvases() {
+    if (!deleteConfirmation) {
       return;
     }
-
+    const canvasesToDelete = deleteConfirmation.canvases;
     setDeleting(true);
     setError("");
     try {
-      const deletedIds = new Set(ownedCanvases.map((canvas) => canvas.id));
-      await Promise.all(ownedCanvases.map((canvas) => api.deleteCanvas(canvas.id)));
+      const deletedIds = new Set(canvasesToDelete.map((canvas) => canvas.id));
+      await Promise.all(canvasesToDelete.map((canvas) => api.deleteCanvas(canvas.id)));
       setCanvases((current) =>
         current.filter((canvas) => !deletedIds.has(canvas.id)),
       );
@@ -201,6 +209,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
         new Set([...current].filter((canvasId) => !deletedIds.has(canvasId))),
       );
       setSelectionAnchorId(null);
+      setDeleteConfirmation(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not delete canvases");
     } finally {
@@ -209,7 +218,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   }
 
   async function handleDeleteSelected() {
-    await deleteCanvases(selectedCanvases);
+    requestDeleteCanvases(selectedCanvases);
   }
 
   async function renameCanvas(canvas: CanvasSummary, name: string) {
@@ -381,7 +390,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
             onClick={() => {
               const canvas = contextMenu.canvas;
               setContextMenu(null);
-              void deleteCanvases([canvas]);
+              requestDeleteCanvases([canvas]);
             }}
             type="button"
           >
@@ -409,6 +418,33 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
           }}
           onRename={(name) => void renameCanvas(renamingCanvas, name)}
         />
+      ) : null}
+      {deleteConfirmation ? (
+        <ConfirmModal
+          confirmLabel={
+            deleteConfirmation.canvases.length === 1 ? "Delete canvas" : "Delete canvases"
+          }
+          loading={deleting}
+          title={
+            deleteConfirmation.canvases.length === 1
+              ? "Delete canvas?"
+              : `Delete ${deleteConfirmation.canvases.length} canvases?`
+          }
+          variant="danger"
+          onCancel={() => {
+            if (!deleting) {
+              setDeleteConfirmation(null);
+            }
+          }}
+          onConfirm={() => void confirmDeleteCanvases()}
+        >
+          <p>
+            {deleteConfirmation.canvases.length === 1
+              ? `This will permanently delete "${deleteConfirmation.canvases[0].name}".`
+              : "This will permanently delete the selected canvases."}
+          </p>
+          <p className="muted">This action cannot be undone.</p>
+        </ConfirmModal>
       ) : null}
     </main>
   );
