@@ -14,6 +14,7 @@ export function ShapeRenderer({
   onContextMenu,
   onDoubleClick,
 }: ShapeRendererProps) {
+  const rotation = shape.rotation ?? 0;
   const shared = {
     onPointerDown: (event: PointerEvent<SVGElement>) => onPointerDown(event, shape),
     onContextMenu: (event: MouseEvent<SVGElement>) => onContextMenu(event, shape),
@@ -22,6 +23,8 @@ export function ShapeRenderer({
   };
 
   if (shape.type === "rect") {
+    const centerX = shape.x + shape.width / 2;
+    const centerY = shape.y + shape.height / 2;
     return (
       <rect
         key={shape.id}
@@ -35,17 +38,20 @@ export function ShapeRenderer({
         stroke={shape.strokeColor}
         strokeOpacity={shape.strokeOpacity ?? 1}
         strokeWidth={shape.strokeWidth}
+        transform={`rotate(${rotation} ${centerX} ${centerY})`}
       />
     );
   }
 
   if (shape.type === "ellipse") {
+    const centerX = shape.x + shape.width / 2;
+    const centerY = shape.y + shape.height / 2;
     return (
       <ellipse
         key={shape.id}
         {...shared}
-        cx={shape.x + shape.width / 2}
-        cy={shape.y + shape.height / 2}
+        cx={centerX}
+        cy={centerY}
         rx={shape.width / 2}
         ry={shape.height / 2}
         fill={shape.fillColor}
@@ -53,6 +59,7 @@ export function ShapeRenderer({
         stroke={shape.strokeColor}
         strokeOpacity={shape.strokeOpacity ?? 1}
         strokeWidth={shape.strokeWidth}
+        transform={`rotate(${rotation} ${centerX} ${centerY})`}
       />
     );
   }
@@ -74,8 +81,10 @@ export function ShapeRenderer({
     );
   }
 
+  const centerX = shape.x + shape.width / 2;
+  const centerY = shape.y + shape.height / 2;
   return (
-    <g key={shape.id} {...shared}>
+    <g key={shape.id} {...shared} transform={`rotate(${rotation} ${centerX} ${centerY})`}>
       <rect
         x={shape.x}
         y={shape.y}

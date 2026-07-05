@@ -22,6 +22,7 @@ COMMON_FIELDS = {
     "strokeOpacity",
     "fillOpacity",
     "strokeWidth",
+    "rotation",
     "createdBy",
     "updatedAt",
 }
@@ -160,6 +161,8 @@ def validate_common_style(value: dict[str, Any], partial: bool = False) -> None:
         validate_range(value["fillOpacity"], 0, 1, "fill opacity")
     if "strokeWidth" in value:
         validate_range(value["strokeWidth"], 0, 32, "stroke width")
+    if "rotation" in value:
+        validate_range(value["rotation"], -3600, 3600, "rotation")
     if "updatedAt" in value and not isinstance(value["updatedAt"], (int, float)):
         raise ValueError("Invalid timestamp")
     if "createdBy" in value and not isinstance(value["createdBy"], str):

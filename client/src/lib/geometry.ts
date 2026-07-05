@@ -3,6 +3,12 @@ import type { ResizeHandle, Shape } from "../types";
 
 export type Point = { x: number; y: number };
 export type Bounds = { x: number; y: number; width: number; height: number };
+export type Corners = {
+  nw: Point;
+  ne: Point;
+  se: Point;
+  sw: Point;
+};
 
 export function getSvgPoint(
   event: PointerEvent<SVGElement>,
@@ -48,12 +54,76 @@ export function getCombinedBounds(shapes: Shape[]): Bounds | null {
     return null;
   }
 
-  const bounds = shapes.map(getShapeBounds);
+  const bounds = shapes.map(getRenderedShapeBounds);
   const minX = Math.min(...bounds.map((item) => item.x));
   const minY = Math.min(...bounds.map((item) => item.y));
   const maxX = Math.max(...bounds.map((item) => item.x + item.width));
   const maxY = Math.max(...bounds.map((item) => item.y + item.height));
   return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+export function getBoundsCorners(bounds: Bounds): Corners {
+  return {
+    nw: { x: bounds.x, y: bounds.y },
+    ne: { x: bounds.x + bounds.width, y: bounds.y },
+    se: { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    sw: { x: bounds.x, y: bounds.y + bounds.height },
+  };
+}
+
+export function getRenderedShapeCorners(shape: Shape): Corners {
+  const bounds = getShapeBounds(shape);
+  if (shape.type === "line") {
+    return getBoundsCorners(bounds);
+  }
+
+  const center = getBoundsCenter(bounds);
+  const corners = getBoundsCorners(bounds);
+  const rotation = shape.rotation ?? 0;
+  return {
+    nw: rotatePoint(corners.nw, center, rotation),
+    ne: rotatePoint(corners.ne, center, rotation),
+    se: rotatePoint(corners.se, center, rotation),
+    sw: rotatePoint(corners.sw, center, rotation),
+  };
+}
+
+export function getRenderedShapeBounds(shape: Shape): Bounds {
+  const corners = getRenderedShapeCorners(shape);
+  const points = Object.values(corners);
+  const minX = Math.min(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const maxY = Math.max(...points.map((point) => point.y));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+export function offsetPointFromCenter(point: Point, center: Point, distance: number): Point {
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  const length = Math.hypot(dx, dy);
+  if (length === 0) {
+    return { x: point.x, y: point.y - distance };
+  }
+  return {
+    x: point.x + (dx / length) * distance,
+    y: point.y + (dy / length) * distance,
+  };
+}
+
+export function getBoundsCenter(bounds: Bounds): Point {
+  return {
+    x: bounds.x + bounds.width / 2,
+    y: bounds.y + bounds.height / 2,
+  };
+}
+
+export function getShapeCenter(shape: Shape): Point {
+  return getBoundsCenter(getShapeBounds(shape));
+}
+
+export function angleBetween(center: Point, point: Point): number {
+  return (Math.atan2(point.y - center.y, point.x - center.x) * 180) / Math.PI;
 }
 
 export function boundsIntersect(a: Bounds, b: Bounds): boolean {
@@ -90,6 +160,34 @@ export function moveShape(shape: Shape, dx: number, dy: number): Shape {
     };
   }
   return { ...shape, x: shape.x + dx, y: shape.y + dy, updatedAt: Date.now() };
+}
+
+export function rotateShapeAround(
+  shape: Shape,
+  center: Point,
+  angleDelta: number,
+): Shape {
+  if (shape.type === "line") {
+    const start = rotatePoint({ x: shape.x1, y: shape.y1 }, center, angleDelta);
+    const end = rotatePoint({ x: shape.x2, y: shape.y2 }, center, angleDelta);
+    return {
+      ...shape,
+      x1: start.x,
+      y1: start.y,
+      x2: end.x,
+      y2: end.y,
+      updatedAt: Date.now(),
+    };
+  }
+
+  const shapeCenter = rotatePoint(getShapeCenter(shape), center, angleDelta);
+  return {
+    ...shape,
+    x: shapeCenter.x - shape.width / 2,
+    y: shapeCenter.y - shape.height / 2,
+    rotation: normalizeRotation((shape.rotation ?? 0) + angleDelta),
+    updatedAt: Date.now(),
+  } as Shape;
 }
 
 export function resizeShape(
@@ -231,4 +329,21 @@ function distanceToSegment(point: Point, start: Point, end: Point): number {
     Math.min(1, ((point.x - start.x) * dx + (point.y - start.y) * dy) / (dx * dx + dy * dy)),
   );
   return Math.hypot(point.x - (start.x + t * dx), point.y - (start.y + t * dy));
+}
+
+function rotatePoint(point: Point, center: Point, angleDegrees: number): Point {
+  const angle = (angleDegrees * Math.PI) / 180;
+  const cos = Math.cos(angle);
+  const sin = Math.sin(angle);
+  const dx = point.x - center.x;
+  const dy = point.y - center.y;
+  return {
+    x: center.x + dx * cos - dy * sin,
+    y: center.y + dx * sin + dy * cos,
+  };
+}
+
+function normalizeRotation(rotation: number): number {
+  const normalized = rotation % 360;
+  return normalized < 0 ? normalized + 360 : normalized;
 }

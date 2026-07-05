@@ -4,6 +4,7 @@ export const CANVAS_HEIGHT = 800;
 export type ShapeType = "rect" | "ellipse" | "line" | "text";
 export type Tool = "select" | "bucket" | ShapeType;
 export type ResizeHandle = "nw" | "ne" | "sw" | "se" | "start" | "end";
+export type TransformHandle = ResizeHandle | "rotate";
 
 export type BaseShape = {
   id: string;
@@ -15,6 +16,7 @@ export type BaseShape = {
   strokeOpacity: number;
   fillOpacity: number;
   strokeWidth: number;
+  rotation?: number;
   createdBy: string;
   updatedAt: number;
 };

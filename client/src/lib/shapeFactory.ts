@@ -22,6 +22,7 @@ export function createBaseShape(
     strokeOpacity: defaults.strokeOpacity,
     fillOpacity: defaults.fillOpacity,
     strokeWidth: defaults.strokeWidth,
+    rotation: 0,
     createdBy: defaults.createdBy,
     updatedAt: Date.now(),
   };

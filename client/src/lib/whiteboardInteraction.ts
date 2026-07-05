@@ -1,10 +1,13 @@
 import {
   getChangedFields,
+  angleBetween,
+  getBoundsCenter,
   getShapeBounds,
   normalizeBounds,
   moveShape,
   resizeBounds,
   resizeShape,
+  rotateShapeAround,
   scaleShapeToBounds,
   type Point,
   type Bounds,
@@ -19,12 +22,20 @@ export type Interaction =
   | { mode: "move"; start: Point; before: Shape; last: Shape }
   | { mode: "move_many"; start: Point; before: Shape[]; last: Shape[] }
   | { mode: "resize"; start: Point; handle: ResizeHandle; before: Shape; last: Shape }
+  | { mode: "rotate"; center: Point; startAngle: number; before: Shape; last: Shape }
   | {
       mode: "resize_many";
       start: Point;
       handle: ResizeHandle;
       before: Shape[];
       beforeBounds: Bounds;
+      last: Shape[];
+    }
+  | {
+      mode: "rotate_many";
+      center: Point;
+      startAngle: number;
+      before: Shape[];
       last: Shape[];
     };
 
@@ -104,6 +115,26 @@ export function resizeManyFromPointer(
   return current.before.map((shape) =>
     scaleShapeToBounds(shape, current.beforeBounds, nextBounds),
   );
+}
+
+export function rotateFromPointer(
+  current: Extract<Interaction, { mode: "rotate" }>,
+  point: Point,
+): Shape {
+  const angleDelta = angleBetween(current.center, point) - current.startAngle;
+  return rotateShapeAround(current.before, current.center, angleDelta);
+}
+
+export function rotateManyFromPointer(
+  current: Extract<Interaction, { mode: "rotate_many" }>,
+  point: Point,
+): Shape[] {
+  const angleDelta = angleBetween(current.center, point) - current.startAngle;
+  return current.before.map((shape) => rotateShapeAround(shape, current.center, angleDelta));
+}
+
+export function rotationCenterForBounds(bounds: Bounds): Point {
+  return getBoundsCenter(bounds);
 }
 
 export function buildBatchHistory(before: Shape[], after: Shape[]): HistoryEntry | null {

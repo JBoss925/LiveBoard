@@ -34,7 +34,7 @@ The frontend does not read or write session tokens.
 | `BoardHeader` | Canvas metadata, revision, presence, share button |
 | `CanvasSvg` | SVG canvas shell |
 | `ShapeRenderer` | SVG rendering per shape type |
-| `SelectionOverlay` | Selection bounds and resize handles |
+| `SelectionOverlay` | Selection bounds, resize handles, and rotation handle |
 | `RemoteCursorLayer` | Remote cursor rendering |
 
 ## Icon System
@@ -145,12 +145,13 @@ Owns pointer interaction state:
 - drawing
 - moving unlocked shapes, multi-selections, and grouped shapes
 - resizing single shapes, unlocked multi-selections, and selected groups
+- rotating single shapes, unlocked multi-selections, and selected groups
 
 It converts pointer events into local optimistic updates, transient previews, selection changes, and final durable history entries. Grouping, ungrouping, multi-style edits, multi-select transforms, and group transforms are sent as `batch` operations so they undo and redo as one shared history entry.
 
 ### `useLiveShapeUpdates`
 
-Throttles drag/resize previews to roughly one every 45ms. Single-shape previews are sent as `update_shape`; multi-select and group transform previews are sent as `batch` operations containing per-shape `update_shape` patches. These previews are sent as `preview_op` and are not persisted.
+Throttles drag/resize/rotation previews to roughly one every 45ms. Single-shape previews are sent as `update_shape`; multi-select and group transform previews are sent as `batch` operations containing per-shape `update_shape` patches. These previews are sent as `preview_op` and are not persisted.
 
 ### `useCanvasHistory`
 
@@ -195,6 +196,8 @@ Shape rendering:
 - `line`: `<line>`
 - `text`: `<g>` with background `<rect>` and `foreignObject` text content
 
+Rect-like shapes persist an optional `rotation` number in degrees and render with an SVG `rotate(...)` transform around their own center. Lines rotate by rewriting their endpoints, so line shapes do not need a separate rotation value. Single-shape selection overlays compute rendered corners from `rotation`, so the outline, resize handles, and rotation handle stay aligned with the visible object. Multi-selection and group overlays use the axis-aligned bounds of each member's rendered corners so the combined box wraps rotated artwork.
+
 Text wraps inside its box via `shape-text-content` CSS and clips to the `foreignObject`.
 
 ## Local Optimism
@@ -209,6 +212,6 @@ When selection changes, `Whiteboard` copies shared selected-shape style values i
 - fill color/opacity
 - text color/opacity/size for text shapes
 
-Grouped shapes are locked for member-level editing. Shapes may carry a `groupIds` nesting stack; the last id is the active/top group for selection and movement. Selecting a grouped object selects every shape in that top group, shows one combined selection box with transform handles, and allows movement or scaling only as a grouped unit. Toolbar style controls remain editable as drawing defaults, but their changes do not apply to grouped members. Any selection that contains a grouped shape is blocked from style, text, bucket, and delete mutations; mixed selections of grouped and unlocked units exist so the user can transform them together or create a parent group. The combined selection box itself is a pointer target, so dragging empty space inside the group bounds moves the group instead of starting background box selection. Multi-selected unlocked shapes use the same combined selection box: dragging any selected member moves every selected shape, and dragging a combined handle scales every selected shape as one undoable batch. Grouping an existing group with another shape appends a new parent id to the stack, and ungrouping removes only the active/top id so child groups remain intact. After every local or remote canvas state change, `Whiteboard` reconciles the selected ids against the current group graph. If a selected shape was added to a group by undo, redo, or another editor, selection expands to the new top group instead of leaving the child editable by itself.
+Grouped shapes are locked for member-level editing. Shapes may carry a `groupIds` nesting stack; the last id is the active/top group for selection and movement. Selecting a grouped object selects every shape in that top group, shows one combined selection box with transform handles, and allows movement, scaling, or rotation only as a grouped unit. Toolbar style controls remain editable as drawing defaults, but their changes do not apply to grouped members. Any selection that contains a grouped shape is blocked from style, text, bucket, and delete mutations; mixed selections of grouped and unlocked units exist so the user can transform them together or create a parent group. The combined selection box itself is a pointer target, so dragging empty space inside the group bounds moves the group instead of starting background box selection. Multi-selected unlocked shapes use the same combined selection box: dragging any selected member moves every selected shape, dragging a corner handle scales every selected shape, and dragging the rotation handle rotates every selected shape as one undoable batch. Grouping an existing group with another shape appends a new parent id to the stack, and ungrouping removes only the active/top id so child groups remain intact. After every local or remote canvas state change, `Whiteboard` reconciles the selected ids against the current group graph. If a selected shape was added to a group by undo, redo, or another editor, selection expands to the new top group instead of leaving the child editable by itself.
 
 Middle-button canvas panning is local viewport state. While panning is active, the SVG uses a grabbing cursor.

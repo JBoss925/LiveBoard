@@ -1,8 +1,10 @@
 import { MouseEvent, PointerEvent, RefObject, useRef } from "react";
 import {
   boundsIntersect,
+  angleBetween,
   getChangedFields,
   getCombinedBounds,
+  getBoundsCenter,
   getShapeBounds,
   getSvgPoint,
   normalizeBounds,
@@ -20,6 +22,8 @@ import {
   isMeaningfulDraft,
   moveFromPointer,
   moveManyFromPointer,
+  rotateFromPointer,
+  rotateManyFromPointer,
   resizeManyFromPointer,
   resizeFromPointer,
   updateDraftFromPointer,
@@ -33,6 +37,7 @@ import type {
   ResizeHandle,
   Shape,
   Tool,
+  TransformHandle,
 } from "../types";
 
 type CanvasHistoryApi = {
@@ -363,11 +368,39 @@ export function useWhiteboardInteractions({
 
   function handleHandlePointerDown(
     event: PointerEvent<SVGElement>,
-    handle: ResizeHandle,
+    handle: TransformHandle,
     shape: Shape,
   ) {
     event.stopPropagation();
     const combinedBounds = selectedShapes.length > 1 ? getCombinedBounds(selectedShapes) : null;
+    if (handle === "rotate") {
+      const bounds = combinedBounds ?? getShapeBounds(shape);
+      const center = getBoundsCenter(bounds);
+      const point = pointerPoint(event);
+      if (combinedBounds) {
+        interaction.current = {
+          mode: "rotate_many",
+          center,
+          startAngle: angleBetween(center, point),
+          before: selectedShapes,
+          last: selectedShapes,
+        };
+        return;
+      }
+
+      if (isGroupedShape(shape) || selectedShapes.length !== 1) {
+        return;
+      }
+      interaction.current = {
+        mode: "rotate",
+        center,
+        startAngle: angleBetween(center, point),
+        before: shape,
+        last: shape,
+      };
+      return;
+    }
+
     if (combinedBounds) {
       interaction.current = {
         mode: "resize_many",
@@ -425,16 +458,22 @@ export function useWhiteboardInteractions({
       updateDraftShape(current, updateDraftFromPointer(current, point));
     }
     if (current.mode === "move") {
-      moveSelectedShape(current, moveFromPointer(current, point));
+      transformSelectedShape(current, moveFromPointer(current, point));
     }
     if (current.mode === "move_many") {
       moveSelectedShapes(current, moveManyFromPointer(current, point));
     }
     if (current.mode === "resize") {
-      resizeSelectedShape(current, resizeFromPointer(current, point));
+      transformSelectedShape(current, resizeFromPointer(current, point));
+    }
+    if (current.mode === "rotate") {
+      transformSelectedShape(current, rotateFromPointer(current, point));
     }
     if (current.mode === "resize_many") {
       transformSelectedShapes(current, resizeManyFromPointer(current, point));
+    }
+    if (current.mode === "rotate_many") {
+      transformSelectedShapes(current, rotateManyFromPointer(current, point));
     }
   }
 
@@ -448,7 +487,10 @@ export function useWhiteboardInteractions({
     });
   }
 
-  function moveSelectedShape(current: Extract<Interaction, { mode: "move" }>, next: Shape) {
+  function transformSelectedShape(
+    current: Extract<Interaction, { mode: "move" | "resize" | "rotate" }>,
+    next: Shape,
+  ) {
     interaction.current = { ...current, last: next };
     applyLocal({
       id: makeOperationId(),
@@ -467,7 +509,7 @@ export function useWhiteboardInteractions({
   }
 
   function transformSelectedShapes(
-    current: Extract<Interaction, { mode: "move_many" | "resize_many" }>,
+    current: Extract<Interaction, { mode: "move_many" | "resize_many" | "rotate_many" }>,
     next: Shape[],
   ) {
     const entry = buildBatchHistory(current.last, next);
@@ -476,17 +518,6 @@ export function useWhiteboardInteractions({
       applyLocal(entry.forward);
     }
     liveUpdates.sendLiveUpdates(next, current.before);
-  }
-
-  function resizeSelectedShape(current: Extract<Interaction, { mode: "resize" }>, next: Shape) {
-    interaction.current = { ...current, last: next };
-    applyLocal({
-      id: makeOperationId(),
-      kind: "update_shape",
-      shapeId: next.id,
-      patch: getChangedFields(current.last, next),
-    });
-    liveUpdates.sendLiveUpdate(next, current.before);
   }
 
   function handlePointerUp() {
@@ -501,13 +532,16 @@ export function useWhiteboardInteractions({
     if (current.mode === "draw") {
       finishDrawingShape(current);
     }
-    if (current.mode === "move" || current.mode === "resize") {
+    if (current.mode === "move" || current.mode === "resize" || current.mode === "rotate") {
       finishTransformingShape(current);
     }
     if (current.mode === "move_many") {
       finishTransformingShapes(current);
     }
     if (current.mode === "resize_many") {
+      finishTransformingShapes(current);
+    }
+    if (current.mode === "rotate_many") {
       finishTransformingShapes(current);
     }
   }
@@ -544,7 +578,7 @@ export function useWhiteboardInteractions({
   }
 
   function finishTransformingShape(
-    current: Extract<Interaction, { mode: "move" | "resize" }>,
+    current: Extract<Interaction, { mode: "move" | "resize" | "rotate" }>,
   ) {
     const entry = buildTransformHistory(current.before, current.last);
     if (!entry) {
@@ -555,7 +589,7 @@ export function useWhiteboardInteractions({
   }
 
   function finishTransformingShapes(
-    current: Extract<Interaction, { mode: "move_many" | "resize_many" }>,
+    current: Extract<Interaction, { mode: "move_many" | "resize_many" | "rotate_many" }>,
   ) {
     const entry = buildBatchHistory(current.before, current.last);
     if (entry) {

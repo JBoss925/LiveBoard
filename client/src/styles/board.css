@@ -287,7 +287,8 @@
   cursor: pointer;
 }
 
-.selection rect {
+.selection rect,
+.selection polygon {
   fill: transparent;
   pointer-events: none;
   stroke: var(--steel-blue);
@@ -314,6 +315,14 @@
   pointer-events: all;
   stroke: var(--steel-blue);
   stroke-width: 2;
+}
+
+.selection .selection-rotation-stem {
+  stroke-dasharray: 4 4;
+}
+
+.selection .selection-rotation-handle {
+  cursor: alias;
 }
 
 .selection-box {

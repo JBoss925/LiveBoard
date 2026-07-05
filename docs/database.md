@@ -163,6 +163,7 @@ Current state example:
       "strokeOpacity": 1,
       "fillOpacity": 0.6,
       "strokeWidth": 2,
+      "rotation": 0,
       "createdBy": "user-id",
       "updatedAt": 1783190000000
     }
@@ -170,7 +171,7 @@ Current state example:
 }
 ```
 
-`groupIds` is optional and stores nested grouping as an ordered stack. The final entry is the active/top group used for selection and movement. `groupId` is also optional and remains as a compatibility field for flat group data; new nested groups keep it equal to the first stack entry. Clearing a group level stores an `update_shape` patch that updates `groupIds`; when the stack becomes empty the patch sets `"groupIds": null` and `"groupId": null`, and operation application removes both fields from the shape.
+`rotation` is optional and stores clockwise degrees for rect-like shapes. Lines rotate by updating their endpoints directly. `groupIds` is optional and stores nested grouping as an ordered stack. The final entry is the active/top group used for selection and movement. `groupId` is also optional and remains as a compatibility field for flat group data; new nested groups keep it equal to the first stack entry. Clearing a group level stores an `update_shape` patch that updates `groupIds`; when the stack becomes empty the patch sets `"groupIds": null` and `"groupId": null`, and operation application removes both fields from the shape.
 
 Text shapes add:
 
@@ -226,5 +227,5 @@ Revision does not increment for:
 
 - cursor movement
 - presence joins/leaves
-- preview operations during drag/resize
+- preview operations during drag/resize/rotation
 - member changes

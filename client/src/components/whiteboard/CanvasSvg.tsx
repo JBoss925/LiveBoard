@@ -2,8 +2,8 @@ import type { MouseEvent, PointerEvent, ReactNode, WheelEvent } from "react";
 import {
   type CanvasState,
   type RemoteCursor,
-  type ResizeHandle,
   type Shape,
+  type TransformHandle,
 } from "../../types";
 import type { Bounds } from "../../lib/geometry";
 import { RemoteCursorLayer } from "./RemoteCursorLayer";
@@ -30,7 +30,7 @@ type CanvasSvgProps = {
   onSelectionPointerDown: (event: PointerEvent<SVGElement>) => void;
   onHandlePointerDown: (
     event: PointerEvent<SVGElement>,
-    handle: ResizeHandle,
+    handle: TransformHandle,
     shape: Shape,
   ) => void;
   onTextDoubleClick: (event: MouseEvent<SVGElement>, shape: Shape) => void;

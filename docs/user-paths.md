@@ -115,16 +115,16 @@
 4. Pointer up sends a `create_shape` history entry.
 5. Backend validates the operation, locks the canvas row, applies it, derives inverse operation, inserts `canvas_ops` and `canvas_history`, increments revision, and broadcasts `op_applied`.
 
-## Select, Move, Or Resize Shapes
+## Select, Move, Resize, Or Rotate Shapes
 
 1. With the select tool active, user left-drags on the canvas background to draw a selection rectangle.
 2. Pointer up selects every intersecting unlocked shape. If any grouped shape intersects, all shapes in that shape's active/top group are selected together.
-3. A single unlocked selected shape shows shape-level resize handles. Pointer down on a handle starts resize.
-4. A multi-selection or selected group shows one combined bounding box with transform handles.
+3. A single unlocked selected shape shows shape-level resize handles and a rotation handle aligned to the rendered shape, including after rotation.
+4. A multi-selection or selected group shows one combined bounding box around the visible rendered artwork, with resize handles and a rotation handle.
 5. Background left-drag is reserved for box selection; left-dragging any selected member in a multi-selection moves every selected shape.
 6. A selected group can be dragged as a unit by pointer down on one of its grouped shapes or on empty space inside the combined group bounding box.
-7. Dragging a combined handle scales every selected shape as one transform. Grouped members are transformed as part of the selected group, but they still cannot be individually edited.
-8. During resize, multi-select transform, or group transform, frontend applies optimistic local preview and sends throttled `preview_op` messages. Multi-shape previews use a `batch` operation so remote editors see every affected member move or scale together before pointer up.
+7. Dragging a combined corner handle scales every selected shape as one transform. Dragging the rotation handle rotates every selected shape around the selection center. Grouped members are transformed as part of the selected group, but they still cannot be individually edited.
+8. During resize, rotation, multi-select transform, or group transform, frontend applies optimistic local preview and sends throttled `preview_op` messages. Multi-shape previews use a `batch` operation so remote editors see every affected member move, scale, or rotate together before pointer up.
 9. Revision does not increment during previews.
 10. Pointer up sends one durable history entry. Single-shape transforms use `update_shape`; multi-select and group transforms use `batch`.
 11. Backend persists that operation and increments revision once.
@@ -171,12 +171,12 @@
 1. User box-selects two or more selection units. A unit can be one unlocked shape or one already grouped object.
 2. User right-clicks one selected shape, or empty space inside the combined selection bounds, and chooses Group.
 3. Frontend sends one undoable `batch` operation that appends a new parent id to each selected shape's `groupIds` stack. Existing child groups keep their earlier stack entries, so groups can be nested.
-4. The group shows one combined bounding box with transform handles. Individual members cannot be selected, text-edited, bucket-filled, or styled while grouped.
+4. The group shows one combined bounding box with scale and rotation handles. Individual members cannot be selected, text-edited, bucket-filled, or styled while grouped.
 5. After grouping, selection resolves to the new top group. The same reconciliation runs after remote operations and undo/redo, so a shape another editor just grouped cannot remain selected as an editable child.
-6. User can drag or scale a selected group as one unit from any grouped shape, empty space inside the combined group bounding box, or the combined transform handles.
+6. User can drag, scale, or rotate a selected group as one unit from any grouped shape, empty space inside the combined group bounding box, or the combined transform handles.
 7. User right-clicks the selected group and chooses Ungroup.
 8. Frontend sends one undoable `batch` operation that removes only the active/top id from each selected shape's `groupIds` stack. Any child group underneath remains grouped.
-9. Mixed selections that include a grouped unit can be moved, scaled, or used to create a parent group, but grouped members remain locked from style, text, bucket, and delete operations.
+9. Mixed selections that include a grouped unit can be moved, scaled, rotated, or used to create a parent group, but grouped members remain locked from style, text, bucket, and delete operations.
 
 ## Undo And Redo
 
