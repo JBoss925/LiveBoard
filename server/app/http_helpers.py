@@ -26,6 +26,9 @@ def canvas_summary(row: asyncpg.Record) -> CanvasSummary:
         id=row["id"],
         name=row["name"],
         ownerId=row["owner_id"],
+        ownerUsername=row["owner_username"],
+        folderId=row["folder_id"],
+        sortOrder=int(row["sort_order"]),
         revision=int(row["revision"]),
         updatedAt=row["updated_at"].isoformat(),
     )
@@ -36,9 +39,10 @@ async def require_canvas_member(canvas_id: str, user_id: str) -> asyncpg.Record:
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
-            SELECT canvases.*
+            SELECT canvases.*, users.username AS owner_username
             FROM canvases
             JOIN canvas_members ON canvas_members.canvas_id = canvases.id
+            JOIN users ON users.id = canvases.owner_id
             WHERE canvases.id = $1 AND canvas_members.user_id = $2
             """,
             canvas_id,

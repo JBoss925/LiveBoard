@@ -30,10 +30,48 @@ class CanvasRenameRequest(BaseModel):
     name: str = Field(min_length=1, max_length=120)
 
 
+class FolderCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    parentId: str | None = None
+
+
+class FolderRenameRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+
+class FolderMoveRequest(BaseModel):
+    parentId: str | None = None
+
+
+class CanvasMoveFolderRequest(BaseModel):
+    folderId: str | None = None
+
+
+class DashboardOrderItem(BaseModel):
+    type: str
+    id: str
+
+
+class DashboardReorderRequest(BaseModel):
+    parentId: str | None = None
+    items: list[DashboardOrderItem]
+
+
+class CanvasFolderSummary(BaseModel):
+    id: str
+    name: str
+    parentId: str | None = None
+    sortOrder: int
+    updatedAt: str
+
+
 class CanvasSummary(BaseModel):
     id: str
     name: str
     ownerId: str
+    ownerUsername: str
+    folderId: str | None = None
+    sortOrder: int
     revision: int
     updatedAt: str
 

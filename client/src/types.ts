@@ -95,12 +95,23 @@ export type CanvasSummary = {
   id: string;
   name: string;
   ownerId: string;
+  ownerUsername: string;
+  folderId?: string | null;
+  sortOrder: number;
   revision: number;
   updatedAt: string;
 };
 
 export type CanvasDetail = CanvasSummary & {
   state: CanvasState;
+};
+
+export type CanvasFolder = {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  sortOrder: number;
+  updatedAt: string;
 };
 
 export type RemoteCursor = {

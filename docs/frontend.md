@@ -23,9 +23,10 @@ The frontend does not read or write session tokens.
 | Component | Responsibility |
 |---|---|
 | `AuthScreen` | Login/signup form |
-| `Dashboard` | List accessible canvases, create canvases, manage multi-selection, open row context menus, share canvases, rename owned canvases, and delete owned canvases |
+| `Dashboard` | List owned canvases by folder, list/search shared canvases, create folders/canvases, manage multi-selection, open row context menus, share canvases, rename owned canvases, and delete owned canvases |
 | `CanvasList` | Selectable canvas rows and loading skeleton |
 | `ConfirmModal` | Reusable modal for destructive or high-impact confirmations |
+| `FolderModal` | Creates owner-scoped dashboard folders |
 | `RenameCanvasModal` | Google Drive style canvas rename dialog |
 | `Whiteboard` | Main board orchestrator |
 | `Toolbar` | Tool and style controls |
@@ -45,8 +46,8 @@ Current icon usage includes:
 - toolbar drawing tools: select, rectangle, ellipse, line, text, paint bucket
 - edit actions: undo, redo, delete
 - navigation/sharing: back, share/collaborators, close
-- dashboard actions: refresh, logout, create
-- dashboard list actions: select all, delete selected, context-menu open/share/rename/delete
+- dashboard actions: refresh, logout, create dropdown
+- dashboard list actions: select all, delete selected, create canvas/folder, context-menu folder creation, context-menu open/share/rename/move/delete
 - context menu actions: bring/send ordering, group/ungroup, and delete
 
 Icon-only buttons must include:
@@ -79,6 +80,27 @@ Canvas state includes an optional `backgroundColor`. New canvases default to `#e
 ## Dashboard Loading
 
 Dashboard canvas refreshes keep the skeleton list visible for at least 450ms. This prevents fast local responses from flashing the loading state too quickly to read as intentional UI feedback.
+
+Dashboard organization:
+
+- owned canvases appear under `Your canvases`
+- folders are owner-scoped and only organize canvases the current user owns
+- folders render as collapsible inline rows inside `Your canvases`
+- folders can be nested under other folders
+- owned canvases with no `folderId` appear in the implicit root next to root folders
+- folders and owned canvases render as one mixed sibling list ordered by `sortOrder`
+- root canvases and folders are created from the `+` dropdown
+- root folders can also be created from the `Your canvases` empty-space context menu
+- nested folders are created from a folder row context menu
+- owned canvases and folders can be moved by drag/drop or context-menu move actions
+- insertion drop zones before every item and after the final item support beginning/end reordering, including one-item lists
+- insertion drop zones become visible when a dragged dashboard item is directly over that slot
+- dropping an item into an insertion zone rewrites sibling order through `PATCH /api/dashboard/order`
+- dropping on the center of a folder row moves the item into that folder
+- empty list levels render no placeholder card or copy
+- deleting a folder is destructive for the entire folder subtree and uses the app confirmation modal
+- shared canvases appear under `Shared with You`
+- shared canvases can be searched by canvas name or owner username and filtered by owner
 
 ## Hooks
 

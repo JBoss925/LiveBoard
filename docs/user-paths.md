@@ -26,12 +26,30 @@
 
 ## Create Canvas
 
-1. Authenticated user clicks the plus button in the dashboard canvas-list header.
+1. Authenticated user clicks the plus button in the dashboard canvas-list header and chooses `Canvas`.
 2. Frontend calls `POST /api/canvases` with the default name `Untitled canvas`.
 3. Backend validates the name, inserts `canvases` row with empty state, inserts owner into `canvas_members`, and returns summary.
 4. Frontend prepends the new canvas to local dashboard state, selects it, and opens the rename modal instead of entering the canvas.
 5. Owner enters a name and frontend calls `PATCH /api/canvases/{canvas_id}`.
 6. Backend validates ownership and name, updates `canvases.name`, and returns the updated summary.
+
+## Organize Owned Canvases
+
+1. User clicks the plus button and chooses `Folder`, or right-clicks empty space in `Your canvases` or an existing folder row and chooses `New folder`.
+2. Frontend opens a folder modal and submits `POST /api/folders` with `parentId` set to null for root folders or to the selected folder for nested folders.
+3. Backend creates a `canvas_folders` row owned by the current user.
+4. Dashboard renders folders and canvases as siblings inside the implicit root, and nested folders render under their parent when expanded.
+5. User drags an owned canvas onto a folder row or root list area, or right-clicks the canvas and chooses a destination.
+6. Frontend calls `PATCH /api/canvases/{canvas_id}/folder`.
+7. Backend verifies the current user owns both the canvas and destination folder, then updates `canvases.folder_id`.
+8. User drags a folder onto another folder or root list area, or uses the folder context menu move actions.
+9. Frontend calls `PATCH /api/folders/{folder_id}/parent`.
+10. Backend verifies ownership and rejects self/descendant moves before updating `canvas_folders.parent_id`.
+11. User drags a canvas or folder into an insertion zone before the first item, between items, or after the final item to reorder siblings.
+12. Frontend calls `PATCH /api/dashboard/order` with the complete mixed folder/canvas order for that parent.
+13. Backend updates `sort_order` on each listed sibling.
+14. User right-clicks a folder and chooses `Delete folder`.
+15. Backend deletes every owned canvas and nested folder in that folder subtree, then closes live sockets for any deleted canvases.
 
 ## Select And Delete Canvases
 
@@ -52,8 +70,15 @@
 
 1. User right-clicks a canvas row.
 2. Frontend selects that row if it was not already selected and opens a compact context menu at the pointer.
-3. User can open the canvas, open the sharing modal for access management, rename the canvas, or delete the canvas.
-4. Rename and delete remain owner-only. Rename uses `PATCH /api/canvases/{canvas_id}` and delete uses `DELETE /api/canvases/{canvas_id}`.
+3. User can open the canvas, open the sharing modal for access management, rename the canvas, move the canvas to a folder, or delete the canvas.
+4. Rename, folder moves, and delete remain owner-only. Rename uses `PATCH /api/canvases/{canvas_id}`, moves use `PATCH /api/canvases/{canvas_id}/folder`, and delete uses `DELETE /api/canvases/{canvas_id}`.
+
+## Search Shared Canvases
+
+1. User reviews the `Shared with You` section.
+2. Frontend only includes canvases where `ownerId` is not the current user.
+3. User searches by canvas name or owner username.
+4. User can filter the shared list to a specific owner.
 
 ## Open Canvas
 

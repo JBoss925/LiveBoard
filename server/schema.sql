@@ -31,10 +31,36 @@ CREATE TABLE IF NOT EXISTS canvases (
   name TEXT NOT NULL,
   owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   state JSONB NOT NULL DEFAULT '{"backgroundColor":"#eff5f5","shapes":[]}'::jsonb,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   revision BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS canvas_folders (
+  id TEXT PRIMARY KEY,
+  owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  parent_id TEXT REFERENCES canvas_folders(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE canvas_folders
+ADD COLUMN IF NOT EXISTS parent_id TEXT REFERENCES canvas_folders(id) ON DELETE CASCADE;
+
+ALTER TABLE canvas_folders
+ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE canvases
+ADD COLUMN IF NOT EXISTS folder_id TEXT REFERENCES canvas_folders(id) ON DELETE SET NULL;
+
+ALTER TABLE canvases
+ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
+
+CREATE INDEX IF NOT EXISTS canvas_folders_owner_idx ON canvas_folders(owner_id, parent_id, sort_order ASC, name ASC);
+CREATE INDEX IF NOT EXISTS canvases_folder_idx ON canvases(owner_id, folder_id, sort_order ASC, name ASC);
 
 CREATE TABLE IF NOT EXISTS canvas_members (
   canvas_id TEXT NOT NULL REFERENCES canvases(id) ON DELETE CASCADE,

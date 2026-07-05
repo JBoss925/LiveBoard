@@ -75,6 +75,9 @@ Response:
     "id": "canvas-id",
     "name": "Design Review",
     "ownerId": "user-id",
+    "ownerUsername": "alice",
+    "folderId": "folder-id",
+    "sortOrder": 1024,
     "revision": 3,
     "updatedAt": "2026-07-04T19:00:00+00:00"
   }
@@ -91,6 +94,62 @@ Request:
 
 Response is one `CanvasSummary`.
 
+#### `GET /api/folders`
+
+Returns folders owned by the current user.
+
+```json
+[
+  { "id": "folder-id", "name": "Q3 Planning", "parentId": null, "sortOrder": 1024, "updatedAt": "2026-07-04T19:00:00+00:00" }
+]
+```
+
+#### `POST /api/folders`
+
+Creates an owned folder.
+
+Request:
+
+```json
+{ "name": "Q3 Planning", "parentId": null }
+```
+
+#### `PATCH /api/folders/{folder_id}`
+
+Renames an owned folder.
+
+#### `DELETE /api/folders/{folder_id}`
+
+Deletes an owned folder, every nested child folder, and every owned canvas inside that folder subtree. Live sockets for deleted canvases are closed with the same deletion message used by direct canvas deletion.
+
+#### `PATCH /api/folders/{folder_id}/parent`
+
+Owner-only. Moves an owned folder under another owned folder or clears its parent to move it to the implicit root. The backend rejects moves into the folder itself or any descendant folder.
+
+Request:
+
+```json
+{ "parentId": "destination-folder-id" }
+```
+
+Use `{ "parentId": null }` to move the folder to the root.
+
+#### `PATCH /api/dashboard/order`
+
+Owner-only. Rewrites the mixed folder/canvas order for one sibling list. `parentId` is null for the implicit root or a folder id for that folder's children. Every item in `items` is assigned a new `sort_order` based on its array position.
+
+Request:
+
+```json
+{
+  "parentId": null,
+  "items": [
+    { "type": "folder", "id": "folder-id" },
+    { "type": "canvas", "id": "canvas-id" }
+  ]
+}
+```
+
 #### `PATCH /api/canvases/{canvas_id}`
 
 Owner-only. Renames a canvas.
@@ -102,6 +161,18 @@ Request:
 ```
 
 Response is one `CanvasSummary`.
+
+#### `PATCH /api/canvases/{canvas_id}/folder`
+
+Owner-only. Moves an owned canvas into an owned folder or clears its folder.
+
+Request:
+
+```json
+{ "folderId": "folder-id" }
+```
+
+Use `{ "folderId": null }` to move the canvas to Unfiled.
 
 #### `DELETE /api/canvases/{canvas_id}`
 
@@ -122,6 +193,9 @@ Response:
   "id": "canvas-id",
   "name": "Design Review",
   "ownerId": "user-id",
+  "ownerUsername": "alice",
+  "folderId": "folder-id",
+  "sortOrder": 1024,
   "revision": 3,
   "updatedAt": "2026-07-04T19:00:00+00:00",
   "state": { "shapes": [] }

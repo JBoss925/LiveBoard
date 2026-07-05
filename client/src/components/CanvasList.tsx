@@ -1,13 +1,19 @@
 import { ChevronRight, FileText } from "lucide-react";
-import type { MouseEvent } from "react";
+import type { DragEvent, MouseEvent } from "react";
 import type { CanvasSummary } from "../types";
 
 type CanvasListProps = {
   canvases: CanvasSummary[];
   selectedIds: Set<string>;
   currentUserId: string;
+  nested?: boolean;
+  nestingLevel?: number;
+  showOwner?: boolean;
+  unframed?: boolean;
   onOpen: (canvasId: string) => void;
   onContextMenu: (canvas: CanvasSummary, event: MouseEvent<HTMLDivElement>) => void;
+  onDragStart?: (canvas: CanvasSummary, event: DragEvent<HTMLDivElement>) => void;
+  onDropOnCanvas?: (canvas: CanvasSummary, event: DragEvent<HTMLDivElement>) => void;
   onSelect: (canvasId: string, event: MouseEvent<HTMLButtonElement>) => void;
 };
 
@@ -15,64 +21,115 @@ export function CanvasList({
   canvases,
   selectedIds,
   currentUserId,
+  nested = false,
+  nestingLevel = 0,
+  showOwner = false,
+  unframed = false,
   onOpen,
   onContextMenu,
+  onDragStart,
+  onDropOnCanvas,
   onSelect,
 }: CanvasListProps) {
-  function handleRowClick(canvasId: string, event: MouseEvent<HTMLButtonElement>) {
-    onSelect(canvasId, event);
-  }
-
-  function handleRowDoubleClick(canvasId: string) {
-    onOpen(canvasId);
-  }
-
   if (canvases.length === 0) {
-    return (
-      <div className="empty-state">
-        <h2>No canvases yet</h2>
-        <p className="muted">Create the first board for your next design review.</p>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="canvas-list">
+    <div className={`canvas-list ${unframed ? "canvas-list-unframed" : ""}`}>
       {canvases.map((canvas) => (
-        <div
-          aria-selected={selectedIds.has(canvas.id)}
-          className={`canvas-row ${selectedIds.has(canvas.id) ? "selected" : ""}`}
+        <CanvasRow
+          canvas={canvas}
+          currentUserId={currentUserId}
           key={canvas.id}
-          onContextMenu={(event) => onContextMenu(canvas, event)}
-          role="row"
-        >
-          <button
-            className="canvas-open-button"
-            onClick={(event) => handleRowClick(canvas.id, event)}
-            onDoubleClick={() => handleRowDoubleClick(canvas.id)}
-            type="button"
-          >
-            <FileText aria-hidden="true" size={18} />
-            <span>
-              <strong>{canvas.name}</strong>
-              <small>
-                Revision {canvas.revision}
-                {canvas.ownerId === currentUserId ? " - Owner" : " - Shared"}
-              </small>
-            </span>
-          </button>
-          <time>{new Date(canvas.updatedAt).toLocaleString()}</time>
-          <button
-            aria-label={`Open ${canvas.name}`}
-            className="canvas-row-open-action"
-            onClick={() => onOpen(canvas.id)}
-            title="Open canvas"
-            type="button"
-          >
-            <ChevronRight aria-hidden="true" size={20} />
-          </button>
-        </div>
+          nested={nested}
+          nestingLevel={nestingLevel}
+          selected={selectedIds.has(canvas.id)}
+          showOwner={showOwner}
+          onContextMenu={onContextMenu}
+          onDragStart={onDragStart}
+          onDropOnCanvas={onDropOnCanvas}
+          onOpen={onOpen}
+          onSelect={onSelect}
+        />
       ))}
+    </div>
+  );
+}
+
+type CanvasRowProps = {
+  canvas: CanvasSummary;
+  currentUserId: string;
+  nested?: boolean;
+  nestingLevel?: number;
+  selected: boolean;
+  showOwner?: boolean;
+  onOpen: (canvasId: string) => void;
+  onContextMenu: (canvas: CanvasSummary, event: MouseEvent<HTMLDivElement>) => void;
+  onDragStart?: (canvas: CanvasSummary, event: DragEvent<HTMLDivElement>) => void;
+  onDropOnCanvas?: (canvas: CanvasSummary, event: DragEvent<HTMLDivElement>) => void;
+  onSelect: (canvasId: string, event: MouseEvent<HTMLButtonElement>) => void;
+};
+
+export function CanvasRow({
+  canvas,
+  currentUserId,
+  nested = false,
+  nestingLevel = 0,
+  selected,
+  showOwner = false,
+  onOpen,
+  onContextMenu,
+  onDragStart,
+  onDropOnCanvas,
+  onSelect,
+}: CanvasRowProps) {
+  return (
+    <div
+      aria-selected={selected}
+      className={`canvas-row ${nested ? "nested" : ""} ${selected ? "selected" : ""}`}
+      draggable={Boolean(onDragStart)}
+      onContextMenu={(event) => onContextMenu(canvas, event)}
+      onDragOver={(event) => {
+        if (onDropOnCanvas) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+        }
+      }}
+      onDragStart={(event) => onDragStart?.(canvas, event)}
+      onDrop={(event) => onDropOnCanvas?.(canvas, event)}
+      role="row"
+      style={nested ? { paddingLeft: 46 + Math.max(0, nestingLevel - 1) * 24 } : undefined}
+    >
+      <button
+        className="canvas-open-button"
+        onClick={(event) => onSelect(canvas.id, event)}
+        onDoubleClick={() => onOpen(canvas.id)}
+        type="button"
+      >
+        <FileText aria-hidden="true" size={18} />
+        <span>
+          <strong>{canvas.name}</strong>
+          <small>
+            Revision {canvas.revision}
+            {showOwner
+              ? ` - ${canvas.ownerUsername}`
+              : canvas.ownerId === currentUserId
+                ? " - Owner"
+                : " - Shared"}
+          </small>
+        </span>
+      </button>
+      <time>{new Date(canvas.updatedAt).toLocaleString()}</time>
+      <button
+        aria-label={`Open ${canvas.name}`}
+        className="canvas-row-open-action"
+        onClick={() => onOpen(canvas.id)}
+        title="Open canvas"
+        type="button"
+      >
+        <ChevronRight aria-hidden="true" size={20} />
+      </button>
     </div>
   );
 }

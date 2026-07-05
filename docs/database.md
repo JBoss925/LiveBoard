@@ -8,6 +8,8 @@ PostgreSQL is the durable source of truth. Schema lives in `server/schema.sql` a
 erDiagram
   users ||--o{ sessions : owns
   users ||--o{ canvases : owns
+  users ||--o{ canvas_folders : owns
+  canvas_folders ||--o{ canvases : contains
   users ||--o{ canvas_members : member
   canvases ||--o{ canvas_members : grants
   users ||--o{ canvas_ops : performs
@@ -35,8 +37,18 @@ erDiagram
     text id PK
     text name
     text owner_id FK
+    text folder_id FK
     jsonb state
     bigint revision
+    timestamptz created_at
+    timestamptz updated_at
+  }
+
+  canvas_folders {
+    text id PK
+    text owner_id FK
+    text parent_id FK
+    text name
     timestamptz created_at
     timestamptz updated_at
   }
@@ -106,12 +118,30 @@ Stores durable canvas metadata and the current canvas state.
 | `id` | UUID string |
 | `name` | validated non-empty string |
 | `owner_id` | FK to `users.id` |
+| `folder_id` | nullable FK to `canvas_folders.id`; only used for owner organization |
+| `sort_order` | integer used to order canvases among folder/canvas siblings with the same parent |
 | `state` | JSONB object with top-level `shapes` array and optional `backgroundColor` |
 | `revision` | monotonically increasing persisted revision |
 | `created_at` | database timestamp |
 | `updated_at` | updated on durable operation or rename |
 
 Deleting a canvas removes dependent `canvas_members`, `canvas_ops`, and `canvas_history` rows through foreign-key cascades.
+
+### `canvas_folders`
+
+Owner-scoped dashboard folders. Folders do not grant access and do not affect realtime canvas state.
+
+| Field | Format |
+|---|---|
+| `id` | UUID string |
+| `owner_id` | FK to `users.id` |
+| `parent_id` | nullable FK to `canvas_folders.id`; null means the implicit root |
+| `name` | validated non-empty string |
+| `sort_order` | integer used to order folders among folder/canvas siblings with the same parent |
+| `created_at` | database timestamp |
+| `updated_at` | updated on rename or parent move |
+
+The schema includes `ON DELETE CASCADE` for child folders and `ON DELETE SET NULL` for `canvases.folder_id`, but the API intentionally performs a stronger Drive-style delete: `DELETE /api/folders/{folder_id}` first finds the folder subtree, deletes owned canvases inside that subtree, then deletes the root folder so nested folders cascade. This keeps direct database deletes non-destructive to canvases while making the application-level folder delete match the UI contract.
 
 Current state example:
 

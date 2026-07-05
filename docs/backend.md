@@ -8,7 +8,7 @@
 | `db.py` | asyncpg pool and schema initialization |
 | `auth.py` | password hashing, session creation, session lookup, current-user dependency |
 | `routes_auth.py` | signup, login, logout, `/api/me` |
-| `routes_canvases.py` | canvas list/create/get, member list, invite, remove access |
+| `routes_canvases.py` | canvas list/create/get, folder organization, member list, invite, remove access |
 | `http_helpers.py` | response mapping, state decoding, membership/owner guards |
 | `schemas.py` | Pydantic request/response models |
 | `canvas_ops.py` | operation application and server-derived inverse operations |
@@ -90,6 +90,20 @@ Returns canvases where current user appears in `canvas_members`.
 ### `POST /api/canvases`
 
 Creates canvas with empty state and inserts creator as member/owner.
+
+### `GET /api/folders`, `POST /api/folders`, `PATCH /api/folders/{folder_id}`, `PATCH /api/folders/{folder_id}/parent`, `DELETE /api/folders/{folder_id}`
+
+Manage owner-scoped dashboard folders. Folders organize only canvases owned by the current user; they do not grant access.
+
+Folder parent moves validate owner access and reject cycles. Folder deletion is recursive at the application layer: canvases inside the folder subtree are deleted before the folder row is removed, and active sockets for those canvases are closed.
+
+### `PATCH /api/dashboard/order`
+
+Requires ownership of every listed item. Rewrites `sort_order` for one mixed folder/canvas sibling list under the supplied `parentId`.
+
+### `PATCH /api/canvases/{canvas_id}/folder`
+
+Requires owner. Moves an owned canvas into one of the owner’s folders or clears `folder_id` to return it to Unfiled.
 
 ### `PATCH /api/canvases/{canvas_id}`
 

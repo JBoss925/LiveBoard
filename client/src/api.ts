@@ -1,4 +1,4 @@
-import type { CanvasDetail, CanvasSummary, User } from "./types";
+import type { CanvasDetail, CanvasFolder, CanvasSummary, User } from "./types";
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
@@ -96,6 +96,60 @@ export function createCanvas(name: string): Promise<CanvasSummary> {
   return request<CanvasSummary>("/api/canvases", {
     method: "POST",
     body: JSON.stringify({ name }),
+  });
+}
+
+export function listFolders(): Promise<CanvasFolder[]> {
+  return request<CanvasFolder[]>("/api/folders");
+}
+
+export function createFolder(name: string, parentId: string | null = null): Promise<CanvasFolder> {
+  return request<CanvasFolder>("/api/folders", {
+    method: "POST",
+    body: JSON.stringify({ name, parentId }),
+  });
+}
+
+export function renameFolder(folderId: string, name: string): Promise<CanvasFolder> {
+  return request<CanvasFolder>(`/api/folders/${folderId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function deleteFolder(folderId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/api/folders/${folderId}`, {
+    method: "DELETE",
+  });
+}
+
+export function moveFolder(
+  folderId: string,
+  parentId: string | null,
+): Promise<CanvasFolder> {
+  return request<CanvasFolder>(`/api/folders/${folderId}/parent`, {
+    method: "PATCH",
+    body: JSON.stringify({ parentId }),
+  });
+}
+
+export function moveCanvasToFolder(
+  canvasId: string,
+  folderId: string | null,
+): Promise<CanvasSummary> {
+  return request<CanvasSummary>(`/api/canvases/${canvasId}/folder`, {
+    method: "PATCH",
+    body: JSON.stringify({ folderId }),
+  });
+}
+
+export function reorderDashboardItems(
+  parentId: string | null,
+  items: Array<{ type: "folder" | "canvas"; id: string }>,
+): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>("/api/dashboard/order", {
+    method: "PATCH",
+    body: JSON.stringify({ parentId, items }),
   });
 }
 
