@@ -57,11 +57,18 @@ type PresenceJoinMessage = {
   user: ActiveUser;
 };
 
+type CanvasRenamedMessage = {
+  type: "canvas_renamed";
+  canvasId: string;
+  name: string;
+};
+
 type ServerMessage =
   | SnapshotMessage
   | AppliedMessage
   | PreviewMessage
   | CursorMessage
+  | CanvasRenamedMessage
   | PresenceJoinMessage
   | PresenceLeaveMessage
   | { type: "access_removed"; message: string }
@@ -76,6 +83,7 @@ export function useCanvasSocket(canvasId: string) {
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [accessMessage, setAccessMessage] = useState<string | null>(null);
+  const [canvasName, setCanvasName] = useState<string | null>(null);
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus>({
     canUndo: false,
     canRedo: false,
@@ -158,6 +166,9 @@ export function useCanvasSocket(canvasId: string) {
             delete next[message.userId];
             return next;
           });
+        }
+        if (message.type === "canvas_renamed") {
+          setCanvasName(message.name);
         }
         if (message.type === "access_removed") {
           historyRequestInFlight.current = false;
@@ -319,6 +330,7 @@ export function useCanvasSocket(canvasId: string) {
     activeUsers,
     remoteCursors: Object.values(remoteCursors),
     accessMessage,
+    canvasName,
     historyStatus,
     setLocalState: setState,
     sendOperation,

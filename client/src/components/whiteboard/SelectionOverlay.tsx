@@ -1,4 +1,4 @@
-import type { PointerEvent } from "react";
+import type { MouseEvent, PointerEvent } from "react";
 import { getCombinedBounds, getShapeBounds } from "../../lib/geometry";
 import type { ResizeHandle, Shape } from "../../types";
 
@@ -10,11 +10,13 @@ type SelectionOverlayProps = {
     shape: Shape,
   ) => void;
   onSelectionPointerDown: (event: PointerEvent<SVGElement>) => void;
+  onSelectionContextMenu: (event: MouseEvent<SVGElement>) => void;
 };
 
 export function SelectionOverlay({
   shapes,
   onHandlePointerDown,
+  onSelectionContextMenu,
   onSelectionPointerDown,
 }: SelectionOverlayProps) {
   const shape = shapes[0];
@@ -36,6 +38,7 @@ export function SelectionOverlay({
           y={bounds.y}
           width={bounds.width}
           height={bounds.height}
+          onContextMenu={onSelectionContextMenu}
           onPointerDown={onSelectionPointerDown}
         />
       </g>

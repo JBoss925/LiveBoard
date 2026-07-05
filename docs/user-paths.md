@@ -165,7 +165,7 @@
 ## Group Or Ungroup Shapes
 
 1. User box-selects two or more unlocked shapes.
-2. User right-clicks one selected shape and chooses Group.
+2. User right-clicks one selected shape, or empty space inside the combined selection bounds, and chooses Group.
 3. Frontend sends one undoable `batch` operation that sets the same `groupId` on every selected shape.
 4. The group shows one combined bounding box. Individual members cannot be selected, resized, text-edited, bucket-filled, or styled while grouped.
 5. User can drag a selected group as one unit from any grouped shape or from empty space inside the combined group bounding box.

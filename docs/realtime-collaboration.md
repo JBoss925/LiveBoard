@@ -97,6 +97,10 @@ Multi-shape user actions use `kind: "batch"` with child operations applied in or
 ```
 
 ```json
+{ "type": "canvas_renamed", "canvasId": "...", "name": "Planning Board" }
+```
+
+```json
 { "type": "presence_join", "user": { "id": "...", "username": "alice", "email": "alice@example.com" } }
 ```
 

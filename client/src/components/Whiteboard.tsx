@@ -39,6 +39,7 @@ type WhiteboardProps = {
 
 type ContextMenuState = {
   shapeId: string;
+  selectedIds: string[];
   x: number;
   y: number;
 };
@@ -104,6 +105,25 @@ function getSharedSelectionValues(shapes: Shape[]): SharedSelectionValues {
     strokeWidth: sharedValue(shapes.map((shape) => shape.strokeWidth)),
     fontSize: sharedValue(textShapes.map((shape) => shape.fontSize)),
   };
+}
+
+function shapesForIds(shapeIds: string[], shapes: Shape[]): Shape[] {
+  return shapeIds
+    .map((shapeId) => shapes.find((shape) => shape.id === shapeId))
+    .filter((shape): shape is Shape => Boolean(shape));
+}
+
+function canGroupSelection(shapeIds: string[], shapes: Shape[]): boolean {
+  return shapesForIds(shapeIds, shapes).filter((shape) => !shape.groupId).length > 1;
+}
+
+function canUngroupSelection(shapeIds: string[], shapes: Shape[]): boolean {
+  const selectedShapes = shapesForIds(shapeIds, shapes);
+  return Boolean(
+    selectedShapes.length > 0 &&
+      selectedShapes[0].groupId &&
+      selectedShapes.every((shape) => shape.groupId === selectedShapes[0].groupId),
+  );
 }
 
 export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
@@ -208,6 +228,12 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
       })
       .finally(() => setCanvasLoading(false));
   }, [canvasId]);
+
+  useEffect(() => {
+    if (socket.canvasName) {
+      setCanvasName(socket.canvasName);
+    }
+  }, [socket.canvasName]);
 
   useEffect(() => {
     const svg = svgRef.current;
@@ -389,16 +415,36 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   function handleShapeContextMenu(event: MouseEvent<SVGElement>, shape: Shape) {
     event.preventDefault();
     event.stopPropagation();
+    const nextSelectedIds = selectedIds.includes(shape.id)
+      ? selectedIds
+      : shape.groupId
+        ? socket.state.shapes
+            .filter((item) => item.groupId === shape.groupId)
+            .map((item) => item.id)
+        : [shape.id];
     if (!selectedIds.includes(shape.id)) {
-      setSelectedIds(
-        shape.groupId
-          ? socket.state.shapes
-              .filter((item) => item.groupId === shape.groupId)
-              .map((item) => item.id)
-          : [shape.id],
-      );
+      setSelectedIds(nextSelectedIds);
     }
-    setContextMenu({ shapeId: shape.id, x: event.clientX, y: event.clientY });
+    setContextMenu({
+      shapeId: shape.id,
+      selectedIds: nextSelectedIds,
+      x: event.clientX,
+      y: event.clientY,
+    });
+  }
+
+  function handleSelectionContextMenu(event: MouseEvent<SVGElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (selectedIds.length === 0) {
+      return;
+    }
+    setContextMenu({
+      shapeId: selectedIds[0],
+      selectedIds,
+      x: event.clientX,
+      y: event.clientY,
+    });
   }
 
   function reorderShape(shapeId: string, direction: "front" | "forward" | "backward" | "back") {
@@ -630,6 +676,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
               onWheel={handleCanvasWheel}
               onShapePointerDown={handleShapePointerDown}
               onShapeContextMenu={handleShapeContextMenu}
+              onSelectionContextMenu={handleSelectionContextMenu}
               onSelectionPointerDown={interactions.handleSelectionPointerDown}
               onHandlePointerDown={interactions.handleHandlePointerDown}
               onTextDoubleClick={interactions.handleTextDoubleClick}
@@ -647,15 +694,15 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
                   setContextMenu(null);
                 }}
                 onGroup={() => {
-                  interactions.groupSelection();
+                  interactions.groupSelection(contextMenu.selectedIds);
                   setContextMenu(null);
                 }}
                 onUngroup={() => {
-                  interactions.ungroupSelection();
+                  interactions.ungroupSelection(contextMenu.selectedIds);
                   setContextMenu(null);
                 }}
-                showGroup={selectedShapes.length > 1 && !isGroupedSelection}
-                showUngroup={isGroupedSelection}
+                showGroup={canGroupSelection(contextMenu.selectedIds, socket.state.shapes)}
+                showUngroup={canUngroupSelection(contextMenu.selectedIds, socket.state.shapes)}
               />
             ) : null}
           </div>

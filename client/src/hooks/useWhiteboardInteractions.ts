@@ -224,8 +224,14 @@ export function useWhiteboardInteractions({
     setSelectedIds([]);
   }
 
-  function groupSelection() {
-    const groupableShapes = selectedShapes.filter((shape) => !shape.groupId);
+  function shapesForIds(shapeIds: string[]): Shape[] {
+    return shapeIds
+      .map((shapeId) => canvasState.shapes.find((shape) => shape.id === shapeId))
+      .filter((shape): shape is Shape => Boolean(shape));
+  }
+
+  function groupSelection(shapeIds = selectedIds) {
+    const groupableShapes = shapesForIds(shapeIds).filter((shape) => !shape.groupId);
     if (groupableShapes.length < 2) {
       return;
     }
@@ -241,22 +247,27 @@ export function useWhiteboardInteractions({
     setSelectedIds(groupableShapes.map((shape) => shape.id));
   }
 
-  function ungroupSelection() {
-    if (!isGroupedSelection()) {
+  function ungroupSelection(shapeIds = selectedIds) {
+    const shapes = shapesForIds(shapeIds);
+    const groupId = shapes[0]?.groupId;
+    if (!groupId || !shapes.every((shape) => shape.groupId === groupId)) {
       return;
     }
-    const after = selectedShapes.map(
+    const after = shapes.map(
       (shape) => ({ ...shape, groupId: null, updatedAt: Date.now() }) as Shape,
     );
-    const entry = buildBatchHistory(selectedShapes, after);
+    const entry = buildBatchHistory(shapes, after);
     if (!entry) {
       return;
     }
     history.sendWithHistory(entry);
-    setSelectedIds(selectedShapes.map((shape) => shape.id));
+    setSelectedIds(shapes.map((shape) => shape.id));
   }
 
   function handleCanvasPointerDown(event: PointerEvent<SVGSVGElement>) {
+    if (event.button !== 0) {
+      return;
+    }
     const point = pointerPoint(event);
     if (tool === "select") {
       interaction.current = { mode: "box_select", start: point, current: point };
@@ -295,6 +306,9 @@ export function useWhiteboardInteractions({
 
   function handleShapePointerDown(event: PointerEvent<SVGElement>, shape: Shape) {
     event.stopPropagation();
+    if (event.button !== 0) {
+      return;
+    }
     if (tool === "bucket") {
       fillShape(shape);
       return;
@@ -346,10 +360,13 @@ export function useWhiteboardInteractions({
   }
 
   function handleSelectionPointerDown(event: PointerEvent<SVGElement>) {
+    event.stopPropagation();
+    if (event.button !== 0) {
+      return;
+    }
     if (!isGroupedSelection()) {
       return;
     }
-    event.stopPropagation();
     interaction.current = {
       mode: "move_many",
       start: pointerPoint(event),

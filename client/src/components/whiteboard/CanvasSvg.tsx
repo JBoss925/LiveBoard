@@ -25,6 +25,7 @@ type CanvasSvgProps = {
   onWheel: (event: WheelEvent<SVGSVGElement>) => void;
   onShapePointerDown: (event: PointerEvent<SVGElement>, shape: Shape) => void;
   onShapeContextMenu: (event: MouseEvent<SVGElement>, shape: Shape) => void;
+  onSelectionContextMenu: (event: MouseEvent<SVGElement>) => void;
   onSelectionPointerDown: (event: PointerEvent<SVGElement>) => void;
   onHandlePointerDown: (
     event: PointerEvent<SVGElement>,
@@ -49,6 +50,7 @@ export function CanvasSvg({
   onWheel,
   onShapePointerDown,
   onShapeContextMenu,
+  onSelectionContextMenu,
   onSelectionPointerDown,
   onHandlePointerDown,
   onTextDoubleClick,
@@ -86,6 +88,7 @@ export function CanvasSvg({
         <SelectionOverlay
           shapes={selectedShapes}
           onHandlePointerDown={onHandlePointerDown}
+          onSelectionContextMenu={onSelectionContextMenu}
           onSelectionPointerDown={onSelectionPointerDown}
         />
       ) : null}

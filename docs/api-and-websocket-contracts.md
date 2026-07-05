@@ -349,6 +349,12 @@ Cursor:
 { "type": "cursor", "user": { "id": "user-id", "username": "alice" }, "x": 100, "y": 200, "selectedShapeId": null }
 ```
 
+Canvas rename:
+
+```json
+{ "type": "canvas_renamed", "canvasId": "canvas-id", "name": "Planning Board" }
+```
+
 Invalidation:
 
 ```json

@@ -374,6 +374,10 @@ async def rename_canvas(
         )
     if row is None:
         raise HTTPException(status_code=404, detail="Canvas not found")
+    await manager.broadcast(
+        canvas_id,
+        {"type": "canvas_renamed", "canvasId": canvas_id, "name": row["name"]},
+    )
     return canvas_summary(row)
 
 
