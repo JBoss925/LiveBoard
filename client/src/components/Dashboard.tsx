@@ -56,7 +56,8 @@ type DeleteConfirmation = {
 };
 
 type FolderDeleteConfirmation = {
-  folder: CanvasFolder;
+  canvases: CanvasSummary[];
+  folders: CanvasFolder[];
 };
 
 type FolderCreateTarget = {
@@ -91,6 +92,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   const [creatingFolder, setCreatingFolder] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(new Set());
   const [selectionAnchorId, setSelectionAnchorId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<DashboardContextMenu | null>(null);
   const [sharingCanvas, setSharingCanvas] = useState<CanvasSummary | null>(null);
@@ -113,6 +115,11 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
     () => canvases.filter((canvas) => selectedIds.has(canvas.id)),
     [canvases, selectedIds],
   );
+  const selectedFolders = useMemo(
+    () => folders.filter((folder) => selectedFolderIds.has(folder.id)),
+    [folders, selectedFolderIds],
+  );
+  const selectedItemCount = selectedIds.size + selectedFolderIds.size;
   const ownedCanvases = useMemo(
     () => canvases.filter((canvas) => canvas.ownerId === user.id),
     [canvases, user.id],
@@ -152,6 +159,10 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
       ]);
       setCanvases(nextCanvases);
       setFolders(nextFolders);
+      setSelectedFolderIds((current) => {
+        const availableIds = new Set(nextFolders.map((folder) => folder.id));
+        return new Set([...current].filter((id) => availableIds.has(id)));
+      });
       setSelectedIds((current) => {
         const availableIds = new Set(nextCanvases.map((canvas) => canvas.id));
         return new Set([...current].filter((id) => availableIds.has(id)));
@@ -187,11 +198,12 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
       }
       event.preventDefault();
       setSelectedIds(new Set(ownedCanvases.map((canvas) => canvas.id)));
+      setSelectedFolderIds(new Set(folders.map((folder) => folder.id)));
     }
 
     window.addEventListener("keydown", handleSelectAll);
     return () => window.removeEventListener("keydown", handleSelectAll);
-  }, [ownedCanvases]);
+  }, [folders, ownedCanvases]);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -250,11 +262,17 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
             rangeIds.forEach((id) => next.add(id));
             return next;
           });
+          if (!isToggle) {
+            setSelectedFolderIds(new Set());
+          }
           return;
         }
       }
 
       setSelectionAnchorId(canvasId);
+      if (!isToggle) {
+        setSelectedFolderIds(new Set());
+      }
       setSelectedIds((current) => {
         if (!isToggle) {
           return new Set([canvasId]);
@@ -272,12 +290,15 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   );
 
   function toggleAll() {
-    setSelectedIds((current) => {
-      if (current.size === ownedCanvases.length) {
-        return new Set();
-      }
-      return new Set(ownedCanvases.map((canvas) => canvas.id));
-    });
+    const allSelected =
+      selectedIds.size === ownedCanvases.length && selectedFolderIds.size === folders.length;
+    if (allSelected) {
+      setSelectedIds(new Set());
+      setSelectedFolderIds(new Set());
+      return;
+    }
+    setSelectedIds(new Set(ownedCanvases.map((canvas) => canvas.id)));
+    setSelectedFolderIds(new Set(folders.map((folder) => folder.id)));
   }
 
   async function handleCreate() {
@@ -286,6 +307,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
     try {
       const canvas = await api.createCanvas("Untitled canvas");
       setCanvases((current) => [canvas, ...current]);
+      setSelectedFolderIds(new Set());
       setSelectedIds(new Set([canvas.id]));
       setSelectionAnchorId(canvas.id);
       setRenamingCanvas(canvas);
@@ -386,31 +408,85 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
 
   function requestDeleteFolder(folder: CanvasFolder) {
     setError("");
-    setFolderDeleteConfirmation({ folder });
+    setFolderDeleteConfirmation({ canvases: [], folders: [folder] });
+  }
+
+  function requestDeleteSelection(
+    canvasesToDelete: CanvasSummary[],
+    foldersToDelete: CanvasFolder[],
+  ) {
+    const ownedCanvasesToDelete = canvasesToDelete.filter((canvas) => canvas.ownerId === user.id);
+    if (ownedCanvasesToDelete.length !== canvasesToDelete.length) {
+      setError("Only canvas owners can delete canvases.");
+      return;
+    }
+    if (foldersToDelete.length === 0) {
+      requestDeleteCanvases(ownedCanvasesToDelete);
+      return;
+    }
+    setError("");
+    setFolderDeleteConfirmation({
+      canvases: ownedCanvasesToDelete,
+      folders: foldersToDelete,
+    });
   }
 
   async function confirmDeleteFolder() {
     if (!folderDeleteConfirmation) {
       return;
     }
-    const folder = folderDeleteConfirmation.folder;
+    const selectedFolderIdSet = new Set(
+      folderDeleteConfirmation.folders.map((folder) => folder.id),
+    );
+    const foldersToDelete = folderDeleteConfirmation.folders.filter(
+      (folder) =>
+        !folderDeleteConfirmation.folders.some(
+          (candidate) =>
+            candidate.id !== folder.id &&
+            descendantFolderIds(candidate.id).has(folder.id),
+        ),
+    );
+    const deletedFolderIds = new Set<string>();
+    foldersToDelete.forEach((folder) => {
+      descendantFolderIds(folder.id).forEach((folderId) => deletedFolderIds.add(folderId));
+    });
+    const canvasesToDelete = folderDeleteConfirmation.canvases.filter(
+      (canvas) => !deletedFolderIds.has(canvas.folderId ?? ""),
+    );
     setDeletingFolder(true);
     setError("");
     try {
-      await api.deleteFolder(folder.id);
-      const deletedFolderIds = descendantFolderIds(folder.id);
+      await Promise.all([
+        ...canvasesToDelete.map((canvas) => api.deleteCanvas(canvas.id)),
+        ...foldersToDelete.map((folder) => api.deleteFolder(folder.id)),
+      ]);
+      const deletedCanvasIds = new Set(canvasesToDelete.map((canvas) => canvas.id));
       setFolders((current) => current.filter((item) => !deletedFolderIds.has(item.id)));
       setCanvases((current) =>
-        current.filter((canvas) => !deletedFolderIds.has(canvas.folderId ?? "")),
+        current.filter(
+          (canvas) =>
+            !deletedCanvasIds.has(canvas.id) && !deletedFolderIds.has(canvas.folderId ?? ""),
+        ),
       );
       setSelectedIds((current) => {
         const remainingCanvasIds = new Set(
           canvases
-            .filter((canvas) => !deletedFolderIds.has(canvas.folderId ?? ""))
+            .filter(
+              (canvas) =>
+                !deletedCanvasIds.has(canvas.id) &&
+                !deletedFolderIds.has(canvas.folderId ?? ""),
+            )
             .map((canvas) => canvas.id),
         );
         return new Set([...current].filter((canvasId) => remainingCanvasIds.has(canvasId)));
       });
+      setSelectedFolderIds((current) =>
+        new Set(
+          [...current].filter(
+            (folderId) => !deletedFolderIds.has(folderId) && !selectedFolderIdSet.has(folderId),
+          ),
+        ),
+      );
       setSelectionAnchorId(null);
       setFolderDeleteConfirmation(null);
     } catch (err) {
@@ -421,7 +497,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   }
 
   async function handleDeleteSelected() {
-    requestDeleteCanvases(selectedCanvases);
+    requestDeleteSelection(selectedCanvases, selectedFolders);
   }
 
   async function renameCanvas(canvas: CanvasSummary, name: string) {
@@ -751,6 +827,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
     event.stopPropagation();
     setContextMenu({ kind: "canvas", canvas, x: event.clientX, y: event.clientY });
     if (!selectedIds.has(canvas.id)) {
+      setSelectedFolderIds(new Set());
       setSelectedIds(new Set([canvas.id]));
       setSelectionAnchorId(canvas.id);
     }
@@ -759,7 +836,34 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   function openFolderContextMenu(folder: CanvasFolder, event: MouseEvent<HTMLDivElement>) {
     event.preventDefault();
     event.stopPropagation();
+    if (!selectedFolderIds.has(folder.id)) {
+      setSelectedFolderIds(new Set([folder.id]));
+      setSelectedIds(new Set());
+      setSelectionAnchorId(null);
+    }
     setContextMenu({ kind: "folder", folder, x: event.clientX, y: event.clientY });
+  }
+
+  function selectFolder(folderId: string, event: MouseEvent<HTMLDivElement>) {
+    const isToggle = event.ctrlKey || event.metaKey;
+    if (!isToggle) {
+      setSelectedIds(new Set());
+    }
+    setSelectedFolderIds((current) => {
+      if (!isToggle) {
+        return new Set([folderId]);
+      }
+      const next = new Set(current);
+      if (next.has(folderId)) {
+        next.delete(folderId);
+      } else {
+        next.add(folderId);
+      }
+      return next;
+    });
+    if (!isToggle) {
+      setSelectionAnchorId(null);
+    }
   }
 
   function openRootContextMenu(event: MouseEvent<HTMLDivElement>) {
@@ -797,32 +901,36 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
             <div>
               <h2>Your canvases</h2>
               <p className="muted">
-                {selectedIds.size > 0
-                  ? `${selectedIds.size} selected`
+                {selectedItemCount > 0
+                  ? `${selectedItemCount} selected`
                   : `${ownedCanvases.length} owned`}
               </p>
             </div>
             <div className="list-actions">
-              {ownedCanvases.length > 0 ? (
+              {ownedCanvases.length + folders.length > 0 ? (
                 <button
                   aria-label={
-                    selectedIds.size === ownedCanvases.length
+                    selectedIds.size === ownedCanvases.length &&
+                    selectedFolderIds.size === folders.length
                       ? "Clear selection"
-                      : "Select all canvases"
+                      : "Select all items"
                   }
                   className="list-text-button"
                   onClick={toggleAll}
                   type="button"
                 >
-                  {selectedIds.size === ownedCanvases.length ? "Unselect all" : "Select all"}
+                  {selectedIds.size === ownedCanvases.length &&
+                  selectedFolderIds.size === folders.length
+                    ? "Unselect all"
+                    : "Select all"}
                 </button>
               ) : null}
               <button
-                aria-label="Delete selected canvases"
+                aria-label="Delete selected items"
                 className="icon-button danger"
-                disabled={selectedIds.size === 0 || deleting}
+                disabled={selectedItemCount === 0 || deleting || deletingFolder}
                 onClick={() => void handleDeleteSelected()}
-                title="Delete selected canvases"
+                title="Delete selected items"
                 type="button"
               >
                 <Trash2 aria-hidden="true" size={18} />
@@ -896,6 +1004,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
                 itemsForParent={itemsForParent}
                 level={0}
                 parentId={null}
+                selectedFolderIds={selectedFolderIds}
                 selectedIds={selectedIds}
                 onCanvasContextMenu={openCanvasContextMenu}
                 onCanvasDragStart={startCanvasDrag}
@@ -905,6 +1014,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
                 onFolderDragStart={startFolderDrag}
                 onOpen={onOpenCanvas}
                 onSelect={selectCanvas}
+                onSelectFolder={selectFolder}
                 onToggleFolder={toggleFolder}
               />
             </div>
@@ -1131,9 +1241,22 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
       ) : null}
       {folderDeleteConfirmation ? (
         <ConfirmModal
-          confirmLabel="Delete folder"
+          confirmLabel={
+            folderDeleteConfirmation.folders.length === 1 &&
+            folderDeleteConfirmation.canvases.length === 0
+              ? "Delete folder"
+              : "Delete items"
+          }
           loading={deletingFolder}
-          title="Delete folder?"
+          title={
+            folderDeleteConfirmation.folders.length === 1 &&
+            folderDeleteConfirmation.canvases.length === 0
+              ? "Delete folder?"
+              : `Delete ${
+                  folderDeleteConfirmation.folders.length +
+                  folderDeleteConfirmation.canvases.length
+                } items?`
+          }
           variant="danger"
           onCancel={() => {
             if (!deletingFolder) {
@@ -1143,8 +1266,10 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
           onConfirm={() => void confirmDeleteFolder()}
         >
           <p>
-            This will permanently delete "{folderDeleteConfirmation.folder.name}" and every
-            canvas and folder inside it.
+            {folderDeleteConfirmation.folders.length === 1 &&
+            folderDeleteConfirmation.canvases.length === 0
+              ? `This will permanently delete "${folderDeleteConfirmation.folders[0].name}" and every canvas and folder inside it.`
+              : "This will permanently delete the selected folders, their contents, and any selected canvases."}
           </p>
           <p className="muted">This action cannot be undone.</p>
         </ConfirmModal>
@@ -1160,6 +1285,7 @@ type FolderTreeProps = {
   itemsForParent: (parentId: string | null) => DashboardListItem[];
   level: number;
   parentId: string | null;
+  selectedFolderIds: Set<string>;
   selectedIds: Set<string>;
   onCanvasContextMenu: (canvas: CanvasSummary, event: MouseEvent<HTMLDivElement>) => void;
   onCanvasDragStart: (canvas: CanvasSummary, event: DragEvent<HTMLDivElement>) => void;
@@ -1173,6 +1299,7 @@ type FolderTreeProps = {
   onFolderDragStart: (folder: CanvasFolder, event: DragEvent<HTMLDivElement>) => void;
   onOpen: (canvasId: string) => void;
   onSelect: (canvasId: string, event: MouseEvent<HTMLButtonElement>) => void;
+  onSelectFolder: (folderId: string, event: MouseEvent<HTMLDivElement>) => void;
   onToggleFolder: (folderId: string) => void;
 };
 
@@ -1183,6 +1310,7 @@ function FolderTree({
   itemsForParent,
   level,
   parentId,
+  selectedFolderIds,
   selectedIds,
   onCanvasContextMenu,
   onCanvasDragStart,
@@ -1192,6 +1320,7 @@ function FolderTree({
   onFolderDragStart,
   onOpen,
   onSelect,
+  onSelectFolder,
   onToggleFolder,
 }: FolderTreeProps) {
   return (
@@ -1236,8 +1365,7 @@ function FolderTree({
         const collapsed = collapsedFolderIds.has(folder.id);
         const childCount = itemsForParent(folder.id).length;
         const ToggleIcon = collapsed ? ChevronRight : ChevronDown;
-        const folderIndentWidth = level * 24;
-        const folderContentStart = 14 + folderIndentWidth;
+        const folderContentStart = 14 + railTypes.length * 24;
         const folderTreeStyle =
           level > 0
             ? ({
@@ -1251,11 +1379,11 @@ function FolderTree({
             beforeIndex={index}
             onDropAtIndex={onDropAtIndex}
           >
-            <div className="folder-list-group">
+            <div className={`folder-list-group ${level > 0 ? "nested" : ""}`}>
               <div
                 className={`folder-row ${level > 0 ? "nested tree-row" : ""} ${
                   level > 0 && isLastSibling ? "tree-row-last" : ""
-                }`}
+                } ${selectedFolderIds.has(folder.id) ? "selected" : ""}`}
                 draggable
                 onContextMenu={(event) => onFolderContextMenu(folder, event)}
                 onDragOver={(event) => {
@@ -1264,6 +1392,8 @@ function FolderTree({
                 }}
                 onDragStart={(event) => onFolderDragStart(folder, event)}
                 onDrop={(event) => onDropOnSibling(item, event)}
+                onClick={(event) => onSelectFolder(folder.id, event)}
+                onDoubleClick={() => onToggleFolder(folder.id)}
                 style={folderTreeStyle}
               >
                 {level > 0 ? (
@@ -1272,14 +1402,17 @@ function FolderTree({
                 <button
                   aria-expanded={!collapsed}
                   className="folder-toggle-button"
-                  onClick={() => onToggleFolder(folder.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onToggleFolder(folder.id);
+                  }}
                   type="button"
                 >
                   <ToggleIcon aria-hidden="true" size={18} />
                 </button>
                 <Folder aria-hidden="true" size={18} />
                 <span>{folder.name}</span>
-                <small>{childCount}</small>
+                <small>{childCount} children</small>
               </div>
               {!collapsed ? (
                 <FolderTree
@@ -1291,6 +1424,7 @@ function FolderTree({
                   itemsForParent={itemsForParent}
                   level={level + 1}
                   parentId={folder.id}
+                  selectedFolderIds={selectedFolderIds}
                   selectedIds={selectedIds}
                   onCanvasContextMenu={onCanvasContextMenu}
                   onCanvasDragStart={onCanvasDragStart}
@@ -1300,6 +1434,7 @@ function FolderTree({
                   onFolderDragStart={onFolderDragStart}
                   onOpen={onOpen}
                   onSelect={onSelect}
+                  onSelectFolder={onSelectFolder}
                   onToggleFolder={onToggleFolder}
                 />
               ) : null}

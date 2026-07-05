@@ -88,8 +88,8 @@ export function CanvasRow({
   onDropOnCanvas,
   onSelect,
 }: CanvasRowProps) {
-  const depthOffset = Math.max(0, nestingLevel - 1) * 24;
-  const contentStart = 46 + depthOffset;
+  const effectiveRailTypes = railTypes ?? [isLastSibling ? "elbow" : "tee"];
+  const contentStart = 22 + effectiveRailTypes.length * 24;
   const rowStyle = nested
     ? ({
         paddingLeft: contentStart,
@@ -118,7 +118,7 @@ export function CanvasRow({
       {nested ? (
         <TreeRails
           contentStart={contentStart}
-          railTypes={railTypes ?? [isLastSibling ? "elbow" : "tee"]}
+          railTypes={effectiveRailTypes}
         />
       ) : null}
       <button

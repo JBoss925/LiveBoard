@@ -226,7 +226,8 @@
   cursor: grabbing;
 }
 
-.folder-row:hover:not(:disabled) {
+.folder-row:hover:not(:disabled),
+.folder-row.selected {
   background-color: var(--surface-soft);
   border-color: transparent;
 }
@@ -283,7 +284,7 @@
   padding-left: 46px;
 }
 
-.folder-list-group:has(.folder-row.nested) {
+.folder-list-group.nested {
   border-bottom: 0;
 }
 

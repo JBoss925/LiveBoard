@@ -39,32 +39,34 @@
 2. Frontend opens a folder modal and submits `POST /api/folders` with `parentId` set to null for root folders or to the selected folder for nested folders.
 3. Backend creates a `canvas_folders` row owned by the current user.
 4. Dashboard renders folders and canvases as siblings inside the implicit root, and nested folders render under their parent when expanded.
-5. User drags an owned canvas onto a folder row or root list area.
-6. Frontend calls `PATCH /api/canvases/{canvas_id}/folder`.
-7. Backend verifies the current user owns both the canvas and destination folder, then updates `canvases.folder_id`.
-8. User drags a folder onto another folder or root list area.
-9. Frontend calls `PATCH /api/folders/{folder_id}/parent`.
-10. Backend verifies ownership and rejects self/descendant moves before updating `canvas_folders.parent_id`.
-11. User drags a canvas or folder into an insertion zone before the first item, between items, or after the final item to reorder siblings.
-12. Frontend calls `PATCH /api/dashboard/order` with the complete mixed folder/canvas order for that parent.
-13. Backend updates `sort_order` on each listed sibling.
-14. User right-clicks a folder and chooses `Delete folder`.
-15. Backend deletes every owned canvas and nested folder in that folder subtree, then closes live sockets for any deleted canvases.
+5. User single-clicks a folder row to select it, Ctrl/Cmd-clicks to combine folders and canvases in one mixed selection, double-clicks the row to collapse or expand it, or clicks the chevron to collapse or expand it directly.
+6. User drags an owned canvas onto a folder row or root list area.
+7. Frontend calls `PATCH /api/canvases/{canvas_id}/folder`.
+8. Backend verifies the current user owns both the canvas and destination folder, then updates `canvases.folder_id`.
+9. User drags a folder onto another folder or root list area.
+10. Frontend calls `PATCH /api/folders/{folder_id}/parent`.
+11. Backend verifies ownership and rejects self/descendant moves before updating `canvas_folders.parent_id`.
+12. User drags a canvas or folder into an insertion zone before the first item, between items, or after the final item to reorder siblings.
+13. Frontend calls `PATCH /api/dashboard/order` with the complete mixed folder/canvas order for that parent.
+14. Backend updates `sort_order` on each listed sibling.
+15. User right-clicks a folder and chooses `Delete folder`, or selects folders/canvases together and clicks the delete toolbar button.
+16. Backend deletes every owned canvas and nested folder in selected folder subtrees, then closes live sockets for any deleted canvases.
 
 ## Select And Delete Canvases
 
-1. User selects canvases from the dashboard list:
+1. User selects canvases and folders from the dashboard list:
    - single click selects one canvas
-   - Ctrl/Cmd-click toggles individual canvases
+   - single click selects one folder
+   - Ctrl/Cmd-click toggles individual canvases and folders into one mixed selection
    - Shift-click selects a contiguous block from the last selected anchor
-   - Ctrl/Cmd+A selects all canvases
-2. Frontend tracks selected canvas ids in dashboard-local React state.
+   - Ctrl/Cmd+A selects all owned canvases and folders
+2. Frontend tracks selected canvas ids and selected folder ids in dashboard-local React state.
 3. User clicks the delete button in the list header.
-4. Frontend only allows deletion when every selected canvas is owned by the current user.
+4. Frontend only allows canvas deletion when every selected canvas is owned by the current user; folders are owner-scoped.
 5. Frontend opens the reusable `ConfirmModal` for the destructive action.
-6. If the user confirms, frontend calls `DELETE /api/canvases/{canvas_id}` for each selected owned canvas.
-7. Backend requires owner, deletes the canvas row, database cascades dependent rows, and live sockets for that canvas receive a deletion message before closing.
-8. Frontend removes deleted canvases from the list and clears selection.
+6. If the user confirms, frontend calls `DELETE /api/canvases/{canvas_id}` for selected owned canvases and `DELETE /api/folders/{folder_id}` for top-level selected folders.
+7. Backend requires owner, deletes the canvas or folder subtree, database cascades dependent rows, and live sockets for deleted canvases receive a deletion message before closing.
+8. Frontend removes deleted canvases/folders from the list and clears selection.
 
 ## Dashboard Canvas Context Menu
 
