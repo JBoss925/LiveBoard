@@ -83,6 +83,7 @@ export function useCanvasSocket(canvasId: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const pendingOps = useRef<PendingSocketMessage[]>([]);
   const seenOpIds = useRef<Set<string>>(new Set());
+  const historyRequestInFlight = useRef(false);
 
   useEffect(() => {
     let shouldReconnect = true;
@@ -106,6 +107,7 @@ export function useCanvasSocket(canvasId: string) {
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data as string) as ServerMessage;
         if (message.type === "snapshot") {
+          historyRequestInFlight.current = false;
           setState(message.state);
           setRevision(message.revision);
           setActiveUsers(sortActiveUsers(message.users));
@@ -114,6 +116,7 @@ export function useCanvasSocket(canvasId: string) {
           seenOpIds.current.clear();
         }
         if (message.type === "op_applied") {
+          historyRequestInFlight.current = false;
           setRevision(message.revision);
           setHistoryStatus(message.history);
           pendingOps.current = pendingOps.current.filter(
@@ -157,6 +160,7 @@ export function useCanvasSocket(canvasId: string) {
           });
         }
         if (message.type === "access_removed") {
+          historyRequestInFlight.current = false;
           shouldReconnect = false;
           pendingOps.current = [];
           setActiveUsers([]);
@@ -166,6 +170,7 @@ export function useCanvasSocket(canvasId: string) {
           ws.close(1008);
         }
         if (message.type === "session_expired") {
+          historyRequestInFlight.current = false;
           shouldReconnect = false;
           pendingOps.current = [];
           setActiveUsers([]);
@@ -175,7 +180,11 @@ export function useCanvasSocket(canvasId: string) {
           ws.close(1008);
         }
         if (message.type === "history_status") {
+          historyRequestInFlight.current = false;
           setHistoryStatus(message.history);
+        }
+        if (message.type === "error") {
+          historyRequestInFlight.current = false;
         }
       };
 
@@ -185,6 +194,7 @@ export function useCanvasSocket(canvasId: string) {
         }
         setStatus("disconnected");
         if (event.code === 1008) {
+          historyRequestInFlight.current = false;
           shouldReconnect = false;
           pendingOps.current = [];
           setActiveUsers([]);
@@ -262,19 +272,21 @@ export function useCanvasSocket(canvasId: string) {
   }, [accessMessage]);
 
   const requestUndo = useCallback(() => {
-    if (accessMessage || !historyStatus.canUndo) {
+    if (accessMessage || !historyStatus.canUndo || historyRequestInFlight.current) {
       return;
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      historyRequestInFlight.current = true;
       wsRef.current.send(JSON.stringify({ type: "undo" }));
     }
   }, [accessMessage, historyStatus.canUndo]);
 
   const requestRedo = useCallback(() => {
-    if (accessMessage || !historyStatus.canRedo) {
+    if (accessMessage || !historyStatus.canRedo || historyRequestInFlight.current) {
       return;
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      historyRequestInFlight.current = true;
       wsRef.current.send(JSON.stringify({ type: "redo" }));
     }
   }, [accessMessage, historyStatus.canRedo]);

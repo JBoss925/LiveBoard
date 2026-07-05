@@ -133,6 +133,8 @@ Small adapter over server history:
 - `redo()` sends `{ type: "redo" }`.
 - `sendWithHistory()` sends durable op payload marked as undoable.
 
+`useCanvasSocket` allows only one undo/redo request in flight at a time. The in-flight flag clears when the server returns `op_applied`, `history_status`, `snapshot`, or `error`.
+
 ### `useWhiteboardKeyboard`
 
 Keyboard shortcuts:

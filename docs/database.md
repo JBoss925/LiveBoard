@@ -63,6 +63,7 @@ erDiagram
     jsonb forward_op
     jsonb inverse_op
     bigint applied_revision
+    bigint undone_revision
     timestamptz undone_at
     timestamptz created_at
   }
@@ -174,6 +175,7 @@ Shared undo/redo stack.
 | `forward_op` | operation that originally changed state |
 | `inverse_op` | backend-derived operation to undo it |
 | `applied_revision` | latest revision where forward op is considered active |
+| `undone_revision` | revision where the row was most recently undone; used for deterministic redo order |
 | `undone_at` | null means active undo candidate; non-null means redo candidate |
 
 New durable edits delete redo rows for that canvas.

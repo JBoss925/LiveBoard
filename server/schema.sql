@@ -59,14 +59,20 @@ CREATE TABLE IF NOT EXISTS canvas_history (
   forward_op JSONB NOT NULL,
   inverse_op JSONB NOT NULL,
   applied_revision BIGINT NOT NULL,
+  undone_revision BIGINT,
   undone_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE canvas_history
+ADD COLUMN IF NOT EXISTS undone_revision BIGINT;
 
 CREATE INDEX IF NOT EXISTS canvas_history_canvas_active_idx
 ON canvas_history(canvas_id, applied_revision DESC)
 WHERE undone_at IS NULL;
 
+DROP INDEX IF EXISTS canvas_history_canvas_redo_idx;
+
 CREATE INDEX IF NOT EXISTS canvas_history_canvas_redo_idx
-ON canvas_history(canvas_id, undone_at DESC)
+ON canvas_history(canvas_id, undone_revision DESC)
 WHERE undone_at IS NOT NULL;

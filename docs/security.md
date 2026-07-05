@@ -67,7 +67,8 @@ In-memory rate limits:
 - login/signup: `10/min` per client/method/path
 - other HTTP API routes: `120/min`
 - WebSocket cursor: `1500/min` per user/canvas
-- WebSocket preview: `120/min` per user/canvas
+- WebSocket preview: `1500/min` per user/canvas
+- WebSocket undo/redo: `300/min` per user/canvas
 - WebSocket writes: `90/min` per user/canvas
 
 These are single-server only.

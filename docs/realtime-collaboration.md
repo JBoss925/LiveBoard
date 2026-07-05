@@ -137,16 +137,16 @@ sequenceDiagram
 2. Selects latest `canvas_history` row where `undone_at IS NULL`.
 3. Applies `inverse_op`.
 4. Inserts applied inverse into `canvas_ops`.
-5. Sets `undone_at = NOW()`.
+5. Sets `undone_at = NOW()` and `undone_revision` to the resulting revision.
 6. Broadcasts `op_applied`.
 
 ## Redo Flow
 
 1. Server locks canvas row.
-2. Selects latest `canvas_history` row where `undone_at IS NOT NULL`.
+2. Selects latest `canvas_history` row where `undone_at IS NOT NULL`, ordered by `undone_revision DESC`.
 3. Applies `forward_op` with a new operation id.
 4. Inserts redo op into `canvas_ops`.
-5. Sets `undone_at = NULL` and updates `applied_revision`.
+5. Sets `undone_at = NULL`, clears `undone_revision`, and updates `applied_revision`.
 6. Broadcasts `op_applied`.
 
 ## Session And Membership Rechecks

@@ -348,7 +348,7 @@ async def apply_history_action(
                     SELECT id, forward_op AS op
                     FROM canvas_history
                     WHERE canvas_id = $1 AND undone_at IS NOT NULL
-                    ORDER BY undone_at DESC
+                    ORDER BY undone_revision DESC NULLS LAST, undone_at DESC
                     LIMIT 1
                     FOR UPDATE
                     """,
@@ -382,14 +382,19 @@ async def apply_history_action(
 
             if action == "undo":
                 await conn.execute(
-                    "UPDATE canvas_history SET undone_at = NOW() WHERE id = $1",
+                    """
+                    UPDATE canvas_history
+                    SET undone_at = NOW(), undone_revision = $2
+                    WHERE id = $1
+                    """,
                     history_row["id"],
+                    next_revision,
                 )
             else:
                 await conn.execute(
                     """
                     UPDATE canvas_history
-                    SET undone_at = NULL, applied_revision = $2
+                    SET undone_at = NULL, undone_revision = NULL, applied_revision = $2
                     WHERE id = $1
                     """,
                     history_row["id"],
