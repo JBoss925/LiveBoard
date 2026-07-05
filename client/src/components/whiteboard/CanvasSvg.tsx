@@ -56,7 +56,11 @@ export function CanvasSvg({
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerUp}
     >
-      <rect width={CANVAS_WIDTH} height={CANVAS_HEIGHT} fill="#ffffff" />
+      <rect
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        fill={canvasState.backgroundColor ?? "#ffffff"}
+      />
       {canvasState.shapes.map((shape) => (
         <ShapeRenderer
           key={shape.id}

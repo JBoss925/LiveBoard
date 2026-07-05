@@ -12,15 +12,19 @@ export function applyOperation(
     if (state.shapes.some((shape) => shape.id === op.shape.id)) {
       return state;
     }
-    return { shapes: [...state.shapes, op.shape] };
+    return { ...state, shapes: [...state.shapes, op.shape] };
+  }
+  if (op.kind === "update_canvas") {
+    return { ...state, ...op.patch };
   }
   if (op.kind === "delete_shape") {
-    return { shapes: state.shapes.filter((shape) => shape.id !== op.shapeId) };
+    return { ...state, shapes: state.shapes.filter((shape) => shape.id !== op.shapeId) };
   }
   if (op.kind === "reorder_shape") {
-    return { shapes: reorderShape(state.shapes, op.shapeId, op.toIndex) };
+    return { ...state, shapes: reorderShape(state.shapes, op.shapeId, op.toIndex) };
   }
   return {
+    ...state,
     shapes: state.shapes.map((shape) =>
       shape.id === op.shapeId ? ({ ...shape, ...op.patch } as Shape) : shape,
     ),

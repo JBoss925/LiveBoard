@@ -34,6 +34,7 @@ type LiveUpdateApi = {
 };
 
 type UseWhiteboardInteractionsOptions = {
+  canvasState: CanvasState;
   fillColor: string;
   fillOpacity: number;
   history: CanvasHistoryApi;
@@ -54,6 +55,7 @@ type UseWhiteboardInteractionsOptions = {
 };
 
 export function useWhiteboardInteractions({
+  canvasState,
   fillColor,
   fillOpacity,
   history,
@@ -116,6 +118,50 @@ export function useWhiteboardInteractions({
     });
   }
 
+  function updateCanvasBackground() {
+    history.sendWithHistory({
+      forward: {
+        id: makeOperationId(),
+        kind: "update_canvas",
+        patch: { backgroundColor: fillColor },
+      },
+      inverse: {
+        id: makeOperationId(),
+        kind: "update_canvas",
+        patch: { backgroundColor: canvasState.backgroundColor ?? "#ffffff" },
+      },
+    });
+    setSelectedId(null);
+  }
+
+  function fillShape(shape: Shape) {
+    if (shape.type === "line") {
+      return;
+    }
+    const before = shape;
+    const after = {
+      ...before,
+      fillColor,
+      fillOpacity,
+      updatedAt: Date.now(),
+    } as Shape;
+    history.sendWithHistory({
+      forward: {
+        id: makeOperationId(),
+        kind: "update_shape",
+        shapeId: before.id,
+        patch: getChangedFields(before, after),
+      },
+      inverse: {
+        id: makeOperationId(),
+        kind: "update_shape",
+        shapeId: before.id,
+        patch: getChangedFields(after, before),
+      },
+    });
+    setSelectedId(null);
+  }
+
   function deleteSelectedShape() {
     if (!selectedShape) {
       return;
@@ -131,6 +177,10 @@ export function useWhiteboardInteractions({
     const point = pointerPoint(event);
     if (tool === "select") {
       setSelectedId(null);
+      return;
+    }
+    if (tool === "bucket") {
+      updateCanvasBackground();
       return;
     }
     if (tool === "text") {
@@ -161,6 +211,10 @@ export function useWhiteboardInteractions({
 
   function handleShapePointerDown(event: PointerEvent<SVGElement>, shape: Shape) {
     event.stopPropagation();
+    if (tool === "bucket") {
+      fillShape(shape);
+      return;
+    }
     setSelectedId(shape.id);
     if (tool !== "select") {
       return;

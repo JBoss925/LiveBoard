@@ -105,7 +105,7 @@ Stores durable canvas metadata and the current canvas state.
 | `id` | UUID string |
 | `name` | validated non-empty string |
 | `owner_id` | FK to `users.id` |
-| `state` | JSONB object with top-level `shapes` array |
+| `state` | JSONB object with top-level `shapes` array and optional `backgroundColor` |
 | `revision` | monotonically increasing persisted revision |
 | `created_at` | database timestamp |
 | `updated_at` | updated on durable operation or rename |
@@ -116,6 +116,7 @@ Current state example:
 
 ```json
 {
+  "backgroundColor": "#ffffff",
   "shapes": [
     {
       "id": "shape-id",

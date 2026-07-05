@@ -76,6 +76,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   );
 
   const interactions = useWhiteboardInteractions({
+    canvasState: socket.state,
     fillColor,
     fillOpacity,
     history,

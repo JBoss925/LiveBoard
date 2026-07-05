@@ -1,5 +1,5 @@
 import type { Point } from "./geometry";
-import type { Shape, Tool } from "../types";
+import type { Shape, ShapeType } from "../types";
 
 type ShapeDefaults = {
   strokeColor: string;
@@ -11,7 +11,7 @@ type ShapeDefaults = {
 };
 
 export function createBaseShape(
-  type: Exclude<Tool, "select">,
+  type: ShapeType,
   point: Point,
   defaults: ShapeDefaults,
 ): Shape {

@@ -2,6 +2,7 @@ import {
   Circle,
   type LucideIcon,
   MousePointer2,
+  PaintBucket,
   Redo2,
   Slash,
   Square,
@@ -50,6 +51,7 @@ const tools: Array<{ id: Tool; label: string; icon: LucideIcon }> = [
   { id: "ellipse", label: "Ellipse", icon: Circle },
   { id: "line", label: "Line", icon: Slash },
   { id: "text", label: "Text", icon: Type },
+  { id: "bucket", label: "Paint bucket", icon: PaintBucket },
 ];
 
 export function Toolbar({

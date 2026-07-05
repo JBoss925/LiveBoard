@@ -105,6 +105,13 @@
 4. Opacity, stroke width, and text size sliders update toolbar state while dragging and commit on pointer/key release.
 5. Style updates are `update_shape` history entries.
 
+## Paint Bucket
+
+1. User chooses the paint bucket tool.
+2. User clicks a shape to apply the current fill color and fill opacity to that shape.
+3. User clicks the canvas background to set `canvas.state.backgroundColor` to the current fill color.
+4. Bucket actions are undoable history entries and do not switch back to the select tool or select the clicked shape.
+
 ## Reorder Or Delete
 
 1. User right-clicks a shape.

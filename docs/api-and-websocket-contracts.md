@@ -167,6 +167,7 @@ Response:
 ```ts
 type CanvasOperation =
   | { id: string; kind: "create_shape"; shape: Shape }
+  | { id: string; kind: "update_canvas"; patch: Partial<CanvasState> }
   | { id: string; kind: "update_shape"; shapeId: string; patch: Partial<Shape> }
   | { id: string; kind: "delete_shape"; shapeId: string }
   | { id: string; kind: "reorder_shape"; shapeId: string; toIndex: number };

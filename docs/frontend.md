@@ -42,7 +42,7 @@ The frontend uses `lucide-react` for semantic UI icons. Prefer Lucide icons over
 
 Current icon usage includes:
 
-- toolbar drawing tools: select, rectangle, ellipse, line, text
+- toolbar drawing tools: select, rectangle, ellipse, line, text, paint bucket
 - edit actions: undo, redo, delete
 - navigation/sharing: back, share/collaborators, close
 - dashboard actions: refresh, logout, create
@@ -70,6 +70,8 @@ Icon+text buttons should use `.inline-icon-button` or existing primary button st
 - canvas name/owner metadata
 
 Live canvas state comes from `useCanvasSocket`.
+
+Canvas state includes an optional `backgroundColor`. The paint bucket tool writes this field when the user clicks the canvas background.
 
 ## Dashboard Loading
 

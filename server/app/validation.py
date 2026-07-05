@@ -10,7 +10,7 @@ MAX_SHAPES_PER_CANVAS = 500
 MAX_OP_PATCH_FIELDS = 16
 
 SHAPE_TYPES = {"rect", "ellipse", "line", "text"}
-OP_KINDS = {"create_shape", "update_shape", "delete_shape", "reorder_shape"}
+OP_KINDS = {"create_shape", "update_canvas", "update_shape", "delete_shape", "reorder_shape"}
 HEX_COLOR_LENGTHS = {4, 7}
 COMMON_FIELDS = {
     "id",
@@ -52,6 +52,10 @@ def validate_operation(op: dict[str, Any]) -> None:
     kind = op["kind"]
     if kind == "create_shape":
         validate_shape(op.get("shape"))
+        return
+
+    if kind == "update_canvas":
+        validate_canvas_patch(op.get("patch"))
         return
 
     shape_id = op.get("shapeId")
@@ -109,6 +113,16 @@ def validate_patch(patch: Any) -> None:
         validate_line(patch, partial=True)
     if any(field in patch for field in TEXT_FIELDS):
         validate_text_shape(patch, partial=True)
+
+
+def validate_canvas_patch(patch: Any) -> None:
+    if not isinstance(patch, dict):
+        raise ValueError("Invalid canvas patch")
+    unknown_fields = set(patch) - {"backgroundColor"}
+    if unknown_fields:
+        raise ValueError("Canvas patch contains unsupported fields")
+    if "backgroundColor" in patch:
+        validate_color(patch["backgroundColor"])
 
 
 def validate_common_style(value: dict[str, Any], partial: bool = False) -> None:

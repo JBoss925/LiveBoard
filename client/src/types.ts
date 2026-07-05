@@ -2,7 +2,7 @@ export const CANVAS_WIDTH = 1200;
 export const CANVAS_HEIGHT = 800;
 
 export type ShapeType = "rect" | "ellipse" | "line" | "text";
-export type Tool = "select" | ShapeType;
+export type Tool = "select" | "bucket" | ShapeType;
 export type ResizeHandle = "nw" | "ne" | "sw" | "se" | "start" | "end";
 
 export type BaseShape = {
@@ -56,11 +56,13 @@ export type TextShape = BaseShape & {
 export type Shape = RectShape | EllipseShape | LineShape | TextShape;
 
 export type CanvasState = {
+  backgroundColor?: string;
   shapes: Shape[];
 };
 
 export type CanvasOperation =
   | { id: string; kind: "create_shape"; shape: Shape }
+  | { id: string; kind: "update_canvas"; patch: Partial<CanvasState> }
   | { id: string; kind: "update_shape"; shapeId: string; patch: Partial<Shape> }
   | { id: string; kind: "delete_shape"; shapeId: string }
   | { id: string; kind: "reorder_shape"; shapeId: string; toIndex: number };

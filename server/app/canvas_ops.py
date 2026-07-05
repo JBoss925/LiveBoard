@@ -5,9 +5,12 @@ from uuid import uuid4
 
 def normalize_state(value: Any) -> dict[str, Any]:
     """Return a canvas state dict with the expected top-level shape list."""
-    if isinstance(value, dict) and isinstance(value.get("shapes"), list):
-        return value
-    return {"shapes": []}
+    if not isinstance(value, dict):
+        return {"shapes": []}
+    next_state = dict(value)
+    if not isinstance(next_state.get("shapes"), list):
+        next_state["shapes"] = []
+    return next_state
 
 
 def apply_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]:
@@ -20,6 +23,12 @@ def apply_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]
         shape = op.get("shape")
         if isinstance(shape, dict) and not any(s.get("id") == shape.get("id") for s in shapes):
             shapes.append(shape)
+        return next_state
+
+    if kind == "update_canvas":
+        patch = op.get("patch")
+        if isinstance(patch, dict):
+            next_state.update(patch)
         return next_state
 
     shape_id = op.get("shapeId")
@@ -68,6 +77,20 @@ def invert_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any
         if any(existing_shape.get("id") == shape["id"] for existing_shape in shapes):
             return None
         return {"id": str(uuid4()), "kind": "delete_shape", "shapeId": shape["id"]}
+
+    if kind == "update_canvas":
+        patch = op.get("patch")
+        if not isinstance(patch, dict):
+            return None
+        inverse_patch = {
+            key: current_state[key]
+            for key in patch
+            if key in current_state
+        }
+        for key in patch:
+            if key not in inverse_patch and key == "backgroundColor":
+                inverse_patch[key] = "#ffffff"
+        return {"id": str(uuid4()), "kind": "update_canvas", "patch": inverse_patch}
 
     shape_id = op.get("shapeId")
     if not isinstance(shape_id, str):
