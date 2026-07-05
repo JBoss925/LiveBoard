@@ -86,7 +86,7 @@ Dashboard organization:
 - owned canvases appear under `Your canvases`
 - folders are owner-scoped and only organize canvases the current user owns
 - folders render as collapsible inline rows inside `Your canvases`
-- folder rows select on single click, support mixed ctrl/cmd selection with canvases and other folders, toggle open/closed from the chevron or a double-click, and show a child count label
+- folder rows select on single click, support mixed ctrl/cmd selection with canvases and other folders, and toggle open/closed from the chevron or a double-click
 - folders can be nested under other folders
 - nested folder and canvas rows compute static tree rail segments per indent level: straight rails for continuing ancestors, T rails for rows with following siblings, and L rails for final siblings
 - owned canvases with no `folderId` appear in the implicit root next to root folders
@@ -102,7 +102,7 @@ Dashboard organization:
 - empty list levels render no placeholder card or copy
 - deleting a folder is destructive for the entire folder subtree and uses the app confirmation modal
 - shared canvases appear under `Shared with You`
-- shared canvases can be searched by canvas name or owner username and filtered by owner
+- shared canvases can be searched by canvas name or owner username and filtered by owner through the app-styled owner menu
 
 ## Hooks
 

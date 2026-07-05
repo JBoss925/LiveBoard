@@ -110,6 +110,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   const [sharedSearch, setSharedSearch] = useState("");
   const [sharedOwnerFilter, setSharedOwnerFilter] = useState("all");
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [sharedOwnerMenuOpen, setSharedOwnerMenuOpen] = useState(false);
 
   const selectedCanvases = useMemo(
     () => canvases.filter((canvas) => selectedIds.has(canvas.id)),
@@ -246,6 +247,27 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
       window.removeEventListener("keydown", handleEscape);
     };
   }, [createMenuOpen]);
+
+  useEffect(() => {
+    if (!sharedOwnerMenuOpen) {
+      return;
+    }
+    function closeSharedOwnerMenu() {
+      setSharedOwnerMenuOpen(false);
+    }
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        closeSharedOwnerMenu();
+      }
+    }
+
+    window.addEventListener("click", closeSharedOwnerMenu);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("click", closeSharedOwnerMenu);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [sharedOwnerMenuOpen]);
 
   const selectCanvas = useCallback(
     (canvasId: string, event: MouseEvent<HTMLButtonElement>) => {
@@ -1036,18 +1058,57 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
                   onChange={(event) => setSharedSearch(event.target.value)}
                 />
               </label>
-              <select
-                aria-label="Filter shared canvases by owner"
-                value={sharedOwnerFilter}
-                onChange={(event) => setSharedOwnerFilter(event.target.value)}
-              >
-                <option value="all">All owners</option>
-                {sharedOwners.map(([ownerId, ownerUsername]) => (
-                  <option key={ownerId} value={ownerId}>
-                    {ownerUsername}
-                  </option>
-                ))}
-              </select>
+              <div className="owner-filter-wrapper">
+                <button
+                  aria-expanded={sharedOwnerMenuOpen}
+                  aria-haspopup="menu"
+                  className="owner-filter-trigger"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSharedOwnerMenuOpen((open) => !open);
+                  }}
+                  type="button"
+                >
+                  <span>
+                    {sharedOwnerFilter === "all"
+                      ? "All owners"
+                      : sharedOwners.find(([ownerId]) => ownerId === sharedOwnerFilter)?.[1] ??
+                        "Owner"}
+                  </span>
+                  <ChevronDown aria-hidden="true" size={16} />
+                </button>
+                {sharedOwnerMenuOpen ? (
+                  <div className="owner-filter-menu" role="menu">
+                    <button
+                      aria-checked={sharedOwnerFilter === "all"}
+                      className={sharedOwnerFilter === "all" ? "active" : ""}
+                      onClick={() => {
+                        setSharedOwnerFilter("all");
+                        setSharedOwnerMenuOpen(false);
+                      }}
+                      role="menuitemradio"
+                      type="button"
+                    >
+                      All owners
+                    </button>
+                    {sharedOwners.map(([ownerId, ownerUsername]) => (
+                      <button
+                        aria-checked={sharedOwnerFilter === ownerId}
+                        className={sharedOwnerFilter === ownerId ? "active" : ""}
+                        key={ownerId}
+                        onClick={() => {
+                          setSharedOwnerFilter(ownerId);
+                          setSharedOwnerMenuOpen(false);
+                        }}
+                        role="menuitemradio"
+                        type="button"
+                      >
+                        {ownerUsername}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
           {loading ? <CanvasListLoading /> : null}
@@ -1363,7 +1424,6 @@ function FolderTree({
         }
         const folder = item.folder;
         const collapsed = collapsedFolderIds.has(folder.id);
-        const childCount = itemsForParent(folder.id).length;
         const ToggleIcon = collapsed ? ChevronRight : ChevronDown;
         const folderContentStart = 14 + railTypes.length * 24;
         const folderTreeStyle =
@@ -1412,7 +1472,6 @@ function FolderTree({
                 </button>
                 <Folder aria-hidden="true" size={18} />
                 <span>{folder.name}</span>
-                <small>{childCount} children</small>
               </div>
               {!collapsed ? (
                 <FolderTree
