@@ -196,7 +196,7 @@ Shape rendering:
 - `line`: `<line>`
 - `text`: `<g>` with background `<rect>` and `foreignObject` text content
 
-Rect-like shapes persist an optional `rotation` number in degrees and render with an SVG `rotate(...)` transform around their own center. Lines rotate by rewriting their endpoints, so line shapes do not need a separate rotation value. Single-shape selection overlays compute rendered corners from `rotation`, so the outline, resize handles, and rotation handle stay aligned with the visible object. Multi-selection and group overlays use the axis-aligned bounds of each member's rendered corners so the combined box wraps rotated artwork.
+Rect-like shapes persist an optional `rotation` number in degrees and render with an SVG `rotate(...)` transform around their own center. Lines rotate by rewriting their endpoints, so line shapes do not need a separate rotation value. Single-shape selection overlays compute rendered corners from `rotation`, so the outline, resize handles, and rotation handle stay aligned with the visible object. Multi-selection and group overlays use the axis-aligned bounds of each member's rendered corners so the combined box wraps rotated artwork. Selection handles are sized from the current zoom so their visible dots and larger transparent hit targets stay a consistent screen size while zooming.
 
 Text wraps inside its box via `shape-text-content` CSS and clips to the `foreignObject`.
 

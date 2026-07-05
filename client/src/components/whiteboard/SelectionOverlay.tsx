@@ -13,6 +13,7 @@ import type { ResizeHandle, Shape, TransformHandle } from "../../types";
 
 type SelectionOverlayProps = {
   shapes: Shape[];
+  zoom: number;
   onHandlePointerDown: (
     event: PointerEvent<SVGElement>,
     handle: TransformHandle,
@@ -24,6 +25,7 @@ type SelectionOverlayProps = {
 
 export function SelectionOverlay({
   shapes,
+  zoom,
   onHandlePointerDown,
   onSelectionContextMenu,
   onSelectionPointerDown,
@@ -32,6 +34,11 @@ export function SelectionOverlay({
   if (!shape) {
     return null;
   }
+
+  const scale = 1 / Math.max(zoom, 0.1);
+  const visibleHandleRadius = 8 * scale;
+  const hitHandleRadius = 16 * scale;
+  const rotationHandleOffset = 34 * scale;
 
   const isSingleUnlockedShape = shapes.length === 1 && !isGroupedShape(shape);
   if (!isSingleUnlockedShape) {
@@ -47,7 +54,7 @@ export function SelectionOverlay({
     ];
     const rotateHandle = {
       x: bounds.x + bounds.width / 2,
-      y: bounds.y - 28,
+      y: bounds.y - rotationHandleOffset,
     };
 
     return (
@@ -59,12 +66,14 @@ export function SelectionOverlay({
           x2={rotateHandle.x}
           y2={rotateHandle.y}
         />
-        <circle
+        <HandleControl
           className="selection-rotation-handle"
-          cx={rotateHandle.x}
-          cy={rotateHandle.y}
-          r="7"
-          onPointerDown={(event) => onHandlePointerDown(event, "rotate", shape)}
+          handle="rotate"
+          point={rotateHandle}
+          shape={shape}
+          visibleRadius={visibleHandleRadius}
+          hitRadius={hitHandleRadius}
+          onHandlePointerDown={onHandlePointerDown}
         />
         <rect
           className="selection-combined-target"
@@ -76,12 +85,14 @@ export function SelectionOverlay({
           onPointerDown={onSelectionPointerDown}
         />
         {handles.map(([handle, x, y]) => (
-          <circle
+          <HandleControl
             key={handle}
-            cx={x}
-            cy={y}
-            r="7"
-            onPointerDown={(event) => onHandlePointerDown(event, handle, shape)}
+            handle={handle}
+            point={{ x, y }}
+            shape={shape}
+            visibleRadius={visibleHandleRadius}
+            hitRadius={hitHandleRadius}
+            onHandlePointerDown={onHandlePointerDown}
           />
         ))}
       </g>
@@ -98,28 +109,30 @@ export function SelectionOverlay({
           x1={centerX}
           y1={centerY}
           x2={centerX}
-          y2={centerY - 28}
+          y2={centerY - rotationHandleOffset}
         />
-        <circle
+        <HandleControl
           className="selection-rotation-handle"
-          cx={centerX}
-          cy={centerY - 28}
-          r="7"
-          onPointerDown={(event) => onHandlePointerDown(event, "rotate", shape)}
+          handle="rotate"
+          point={{ x: centerX, y: centerY - rotationHandleOffset }}
+          shape={shape}
+          visibleRadius={visibleHandleRadius}
+          hitRadius={hitHandleRadius}
+          onHandlePointerDown={onHandlePointerDown}
         />
         <line x1={shape.x1} y1={shape.y1} x2={shape.x2} y2={shape.y2} />
         {[
           ["start", shape.x1, shape.y1],
           ["end", shape.x2, shape.y2],
         ].map(([handle, x, y]) => (
-          <circle
+          <HandleControl
             key={handle}
-            cx={Number(x)}
-            cy={Number(y)}
-            r="7"
-            onPointerDown={(event) =>
-              onHandlePointerDown(event, handle as ResizeHandle, shape)
-            }
+            handle={handle as ResizeHandle}
+            point={{ x: Number(x), y: Number(y) }}
+            shape={shape}
+            visibleRadius={visibleHandleRadius}
+            hitRadius={hitHandleRadius}
+            onHandlePointerDown={onHandlePointerDown}
           />
         ))}
       </g>
@@ -136,7 +149,7 @@ export function SelectionOverlay({
     ["se", corners.se],
   ];
   const topCenter = midpoint(corners.nw, corners.ne);
-  const rotateHandle = offsetPointFromCenter(topCenter, center, 28);
+  const rotateHandle = offsetPointFromCenter(topCenter, center, rotationHandleOffset);
 
   return (
     <g className="selection">
@@ -147,24 +160,69 @@ export function SelectionOverlay({
         x2={rotateHandle.x}
         y2={rotateHandle.y}
       />
-      <circle
+      <HandleControl
         className="selection-rotation-handle"
-        cx={rotateHandle.x}
-        cy={rotateHandle.y}
-        r="7"
-        onPointerDown={(event) => onHandlePointerDown(event, "rotate", shape)}
+        handle="rotate"
+        point={rotateHandle}
+        shape={shape}
+        visibleRadius={visibleHandleRadius}
+        hitRadius={hitHandleRadius}
+        onHandlePointerDown={onHandlePointerDown}
       />
       <SelectionPolygon corners={corners} />
       {handles.map(([handle, point]) => (
-        <circle
+        <HandleControl
           key={handle}
-          cx={point.x}
-          cy={point.y}
-          r="7"
-          onPointerDown={(event) => onHandlePointerDown(event, handle, shape)}
+          handle={handle}
+          point={point}
+          shape={shape}
+          visibleRadius={visibleHandleRadius}
+          hitRadius={hitHandleRadius}
+          onHandlePointerDown={onHandlePointerDown}
         />
       ))}
     </g>
+  );
+}
+
+function HandleControl({
+  className = "",
+  handle,
+  hitRadius,
+  point,
+  shape,
+  visibleRadius,
+  onHandlePointerDown,
+}: {
+  className?: string;
+  handle: TransformHandle;
+  hitRadius: number;
+  point: Point;
+  shape: Shape;
+  visibleRadius: number;
+  onHandlePointerDown: (
+    event: PointerEvent<SVGElement>,
+    handle: TransformHandle,
+    shape: Shape,
+  ) => void;
+}) {
+  return (
+    <>
+      <circle
+        className={`selection-handle-hit-target ${className}`}
+        cx={point.x}
+        cy={point.y}
+        r={hitRadius}
+        onPointerDown={(event) => onHandlePointerDown(event, handle, shape)}
+      />
+      <circle
+        className={`selection-handle ${className}`}
+        cx={point.x}
+        cy={point.y}
+        r={visibleRadius}
+        onPointerDown={(event) => onHandlePointerDown(event, handle, shape)}
+      />
+    </>
   );
 }
 

@@ -89,6 +89,7 @@ export function CanvasSvg({
       {selectedShapes.length > 0 ? (
         <SelectionOverlay
           shapes={selectedShapes}
+          zoom={zoom}
           onHandlePointerDown={onHandlePointerDown}
           onSelectionContextMenu={onSelectionContextMenu}
           onSelectionPointerDown={onSelectionPointerDown}

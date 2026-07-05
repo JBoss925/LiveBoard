@@ -119,8 +119,8 @@
 
 1. With the select tool active, user left-drags on the canvas background to draw a selection rectangle.
 2. Pointer up selects every intersecting unlocked shape. If any grouped shape intersects, all shapes in that shape's active/top group are selected together.
-3. A single unlocked selected shape shows shape-level resize handles and a rotation handle aligned to the rendered shape, including after rotation.
-4. A multi-selection or selected group shows one combined bounding box around the visible rendered artwork, with resize handles and a rotation handle.
+3. A single unlocked selected shape shows shape-level resize handles and a rotation handle aligned to the rendered shape, including after rotation. Handles keep a consistent screen size while zooming and use larger transparent hit targets than their visible dots.
+4. A multi-selection or selected group shows one combined bounding box around the visible rendered artwork, with resize handles and a rotation handle that also keep a consistent screen size while zooming.
 5. Background left-drag is reserved for box selection; left-dragging any selected member in a multi-selection moves every selected shape.
 6. A selected group can be dragged as a unit by pointer down on one of its grouped shapes or on empty space inside the combined group bounding box.
 7. Dragging a combined corner handle scales every selected shape as one transform. Dragging the rotation handle rotates every selected shape around the selection center. Grouped members are transformed as part of the selected group, but they still cannot be individually edited.

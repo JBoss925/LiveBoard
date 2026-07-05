@@ -294,6 +294,7 @@
   stroke: var(--steel-blue);
   stroke-dasharray: 8 5;
   stroke-width: 2;
+  vector-effect: non-scaling-stroke;
 }
 
 .selection .selection-combined-target {
@@ -307,14 +308,23 @@
   stroke: var(--steel-blue);
   stroke-dasharray: 8 5;
   stroke-width: 2;
+  vector-effect: non-scaling-stroke;
 }
 
-.selection circle {
+.selection .selection-handle {
   cursor: grab;
   fill: var(--surface);
   pointer-events: all;
   stroke: var(--steel-blue);
   stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.selection .selection-handle-hit-target {
+  cursor: grab;
+  fill: transparent;
+  pointer-events: all;
+  stroke: transparent;
 }
 
 .selection .selection-rotation-stem {
