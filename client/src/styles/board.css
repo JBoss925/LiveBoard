@@ -327,12 +327,13 @@
   stroke: transparent;
 }
 
-.selection .selection-rotation-stem {
-  stroke-dasharray: 4 4;
+.selection .selection-handle:active,
+.selection .selection-handle-hit-target:active {
+  cursor: grabbing;
 }
 
-.selection .selection-rotation-handle {
-  cursor: alias;
+.selection .selection-rotation-stem {
+  stroke-dasharray: 4 4;
 }
 
 .selection-box {
