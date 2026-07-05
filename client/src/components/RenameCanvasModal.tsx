@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 
 type RenameCanvasModalProps = {
   initialName: string;
+  subjectLabel?: string;
   saving: boolean;
   error: string;
   onClose: () => void;
@@ -11,6 +12,7 @@ type RenameCanvasModalProps = {
 
 export function RenameCanvasModal({
   initialName,
+  subjectLabel = "Canvas",
   saving,
   error,
   onClose,
@@ -58,7 +60,7 @@ export function RenameCanvasModal({
       <section className="rename-modal">
         <header className="share-modal-header">
           <div>
-            <p className="eyebrow">Canvas</p>
+            <p className="eyebrow">{subjectLabel}</p>
             <h2 id="rename-modal-title">Rename</h2>
           </div>
           <button

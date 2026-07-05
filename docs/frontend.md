@@ -23,11 +23,11 @@ The frontend does not read or write session tokens.
 | Component | Responsibility |
 |---|---|
 | `AuthScreen` | Login/signup form |
-| `Dashboard` | List owned canvases by folder, list/search shared canvases, create folders/canvases, manage multi-selection, open row context menus, share canvases, rename owned canvases, and delete owned canvases |
+| `Dashboard` | List owned canvases by folder, list/search shared canvases, create folders/canvases, manage multi-selection, open row context menus, share canvases, rename owned canvases/folders, and delete owned canvases/folders |
 | `CanvasList` | Selectable canvas rows and loading skeleton |
 | `ConfirmModal` | Reusable modal for destructive or high-impact confirmations |
 | `FolderModal` | Creates owner-scoped dashboard folders |
-| `RenameCanvasModal` | Google Drive style canvas rename dialog |
+| `RenameCanvasModal` | Google Drive style rename dialog for canvases and folders |
 | `Whiteboard` | Main board orchestrator |
 | `Toolbar` | Tool and style controls |
 | `ShareModal` | Member list, invite, remove access |
@@ -47,7 +47,7 @@ Current icon usage includes:
 - edit actions: undo, redo, delete
 - navigation/sharing: back, share/collaborators, close
 - dashboard actions: refresh, logout, create dropdown
-- dashboard list actions: select all, delete selected, create canvas/folder, context-menu folder creation, context-menu open/share/rename/move/delete
+- dashboard list actions: select all, delete selected, create canvas/folder, context-menu folder creation, context-menu open/share/rename/delete
 - context menu actions: bring/send ordering, group/ungroup, and delete
 
 Icon-only buttons must include:
@@ -94,6 +94,7 @@ Dashboard organization:
 - root canvases and folders are created from the `+` dropdown
 - root folders can also be created from the `Your canvases` empty-space context menu
 - nested folders are created from a folder row context menu
+- folders are renamed from their row context menu with the shared rename dialog
 - owned canvases and folders are moved by drag/drop
 - insertion drop zones before every item and after the final item support beginning/end reordering, including one-item lists
 - insertion drop zones become visible when a dragged dashboard item is directly over that slot

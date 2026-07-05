@@ -49,8 +49,11 @@
 12. User drags a canvas or folder into an insertion zone before the first item, between items, or after the final item to reorder siblings.
 13. Frontend calls `PATCH /api/dashboard/order` with the complete mixed folder/canvas order for that parent.
 14. Backend updates `sort_order` on each listed sibling.
-15. User right-clicks a folder and chooses `Delete folder`, or selects folders/canvases together and clicks the delete toolbar button.
-16. Backend deletes every owned canvas and nested folder in selected folder subtrees, then closes live sockets for any deleted canvases.
+15. User right-clicks a folder and chooses `Rename`.
+16. Frontend opens the rename modal and submits `PATCH /api/folders/{folder_id}`.
+17. Backend verifies ownership and updates `canvas_folders.name`.
+18. User right-clicks a folder and chooses `Delete folder`, or selects folders/canvases together and clicks the delete toolbar button.
+19. Backend deletes every owned canvas and nested folder in selected folder subtrees, then closes live sockets for any deleted canvases.
 
 ## Select And Delete Canvases
 
@@ -68,12 +71,13 @@
 7. Backend requires owner, deletes the canvas or folder subtree, database cascades dependent rows, and live sockets for deleted canvases receive a deletion message before closing.
 8. Frontend removes deleted canvases/folders from the list and clears selection.
 
-## Dashboard Canvas Context Menu
+## Dashboard Context Menus
 
 1. User right-clicks a canvas row.
 2. Frontend selects that row if it was not already selected and opens a compact context menu at the pointer.
-3. User can open the canvas, open the sharing modal for access management, rename the canvas, move the canvas to a folder, or delete the canvas.
-4. Rename and delete remain owner-only. Rename uses `PATCH /api/canvases/{canvas_id}` and delete uses `DELETE /api/canvases/{canvas_id}`. Folder moves are handled by dashboard drag/drop.
+3. User can open the canvas, open the sharing modal for access management, rename the canvas, or delete the canvas.
+4. User can right-click a folder row to create a nested folder, rename that folder, or delete the folder subtree.
+5. Canvas rename and delete remain owner-only. Canvas rename uses `PATCH /api/canvases/{canvas_id}` and delete uses `DELETE /api/canvases/{canvas_id}`. Folder rename uses `PATCH /api/folders/{folder_id}`. Folder moves are handled by dashboard drag/drop.
 
 ## Search Shared Canvases
 

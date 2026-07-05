@@ -97,6 +97,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   const [contextMenu, setContextMenu] = useState<DashboardContextMenu | null>(null);
   const [sharingCanvas, setSharingCanvas] = useState<CanvasSummary | null>(null);
   const [renamingCanvas, setRenamingCanvas] = useState<CanvasSummary | null>(null);
+  const [renamingFolder, setRenamingFolder] = useState<CanvasFolder | null>(null);
   const [folderCreateTarget, setFolderCreateTarget] = useState<FolderCreateTarget | null>(null);
   const [collapsedFolderIds, setCollapsedFolderIds] = useState<Set<string>>(new Set());
   const [folderError, setFolderError] = useState("");
@@ -540,6 +541,24 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
       setRenamingCanvas(null);
     } catch (err) {
       setRenameError(err instanceof Error ? err.message : "Could not rename canvas");
+    } finally {
+      setRenameSaving(false);
+    }
+  }
+
+  async function renameFolder(folder: CanvasFolder, name: string) {
+    setRenameSaving(true);
+    setRenameError("");
+    try {
+      const renamedFolder = await api.renameFolder(folder.id, name);
+      setFolders((current) =>
+        current.map((currentFolder) =>
+          currentFolder.id === renamedFolder.id ? renamedFolder : currentFolder,
+        ),
+      );
+      setRenamingFolder(null);
+    } catch (err) {
+      setRenameError(err instanceof Error ? err.message : "Could not rename folder");
     } finally {
       setRenameSaving(false);
     }
@@ -1197,6 +1216,17 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
                 <span>New folder</span>
               </button>
               <button
+                onClick={() => {
+                  setRenameError("");
+                  setRenamingFolder(contextMenu.folder);
+                  setContextMenu(null);
+                }}
+                type="button"
+              >
+                <Pencil aria-hidden="true" size={16} />
+                <span>Rename</span>
+              </button>
+              <button
                 className="danger"
                 disabled={deletingFolder}
                 onClick={() => {
@@ -1258,6 +1288,19 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
             setRenamingCanvas(null);
           }}
           onRename={(name) => void renameCanvas(renamingCanvas, name)}
+        />
+      ) : null}
+      {renamingFolder ? (
+        <RenameCanvasModal
+          error={renameError}
+          initialName={renamingFolder.name}
+          saving={renameSaving}
+          subjectLabel="Folder"
+          onClose={() => {
+            setRenameError("");
+            setRenamingFolder(null);
+          }}
+          onRename={(name) => void renameFolder(renamingFolder, name)}
         />
       ) : null}
       {folderCreateTarget ? (
