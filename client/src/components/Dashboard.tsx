@@ -496,21 +496,6 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
     return folderId !== null && descendantFolderIds(ancestorId).has(folderId);
   }
 
-  function folderPath(folder: CanvasFolder): string {
-    const byId = new Map(folders.map((item) => [item.id, item]));
-    const names = [folder.name];
-    let parentId = folder.parentId ?? null;
-    while (parentId) {
-      const parent = byId.get(parentId);
-      if (!parent) {
-        break;
-      }
-      names.unshift(parent.name);
-      parentId = parent.parentId ?? null;
-    }
-    return names.join(" / ");
-  }
-
   function toggleFolder(folderId: string) {
     setCollapsedFolderIds((current) => {
       const next = new Set(current);
@@ -1002,37 +987,6 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
                 <Pencil aria-hidden="true" size={16} />
                 <span>Rename</span>
               </button>
-              {contextMenu.canvas.ownerId === user.id ? (
-                <>
-                  <button
-                    disabled={!contextMenu.canvas.folderId}
-                    onClick={() => {
-                      const canvas = contextMenu.canvas;
-                      setContextMenu(null);
-                      void moveCanvas(canvas, null);
-                    }}
-                    type="button"
-                  >
-                    <Folder aria-hidden="true" size={16} />
-                    <span>Move to root</span>
-                  </button>
-                  {folders.map((folder) => (
-                    <button
-                      disabled={contextMenu.canvas.folderId === folder.id}
-                      key={folder.id}
-                      onClick={() => {
-                        const canvas = contextMenu.canvas;
-                        setContextMenu(null);
-                        void moveCanvas(canvas, folder.id);
-                      }}
-                      type="button"
-                    >
-                      <Folder aria-hidden="true" size={16} />
-                      <span>Move to {folderPath(folder)}</span>
-                    </button>
-                  ))}
-                </>
-              ) : null}
               <button
                 className="danger"
                 disabled={contextMenu.canvas.ownerId !== user.id || deleting}
@@ -1064,39 +1018,6 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
                 <Folder aria-hidden="true" size={16} />
                 <span>New folder</span>
               </button>
-              <button
-                disabled={!contextMenu.folder.parentId}
-                onClick={() => {
-                  const folder = contextMenu.folder;
-                  setContextMenu(null);
-                  void moveFolder(folder, null);
-                }}
-                type="button"
-              >
-                <Folder aria-hidden="true" size={16} />
-                <span>Move to root</span>
-              </button>
-              {folders
-                .filter(
-                  (folder) =>
-                    folder.id !== contextMenu.folder.id &&
-                    !isFolderDescendant(folder.id, contextMenu.folder.id),
-                )
-                .map((folder) => (
-                  <button
-                    disabled={contextMenu.folder.parentId === folder.id}
-                    key={folder.id}
-                    onClick={() => {
-                      const sourceFolder = contextMenu.folder;
-                      setContextMenu(null);
-                      void moveFolder(sourceFolder, folder.id);
-                    }}
-                    type="button"
-                  >
-                    <Folder aria-hidden="true" size={16} />
-                    <span>Move to {folderPath(folder)}</span>
-                  </button>
-                ))}
               <button
                 className="danger"
                 disabled={deletingFolder}

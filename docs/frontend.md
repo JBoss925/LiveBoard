@@ -92,7 +92,7 @@ Dashboard organization:
 - root canvases and folders are created from the `+` dropdown
 - root folders can also be created from the `Your canvases` empty-space context menu
 - nested folders are created from a folder row context menu
-- owned canvases and folders can be moved by drag/drop or context-menu move actions
+- owned canvases and folders are moved by drag/drop
 - insertion drop zones before every item and after the final item support beginning/end reordering, including one-item lists
 - insertion drop zones become visible when a dragged dashboard item is directly over that slot
 - dropping an item into an insertion zone rewrites sibling order through `PATCH /api/dashboard/order`
