@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import {
   Circle,
   type LucideIcon,
@@ -113,11 +114,10 @@ export function Toolbar({
       <div className="tool-group color-group">
         <label title="Stroke color">
           Stroke
-          <input
-            type="color"
+          <ColorInput
             value={strokeColor}
             disabled={styleDisabled}
-            onChange={(event) => onStrokeColorChange(event.target.value)}
+            onChange={onStrokeColorChange}
           />
           <AlphaSlider
             label="Stroke opacity"
@@ -135,11 +135,10 @@ export function Toolbar({
         </label>
         <label title="Fill color">
           Fill
-          <input
-            type="color"
+          <ColorInput
             value={fillColor}
             disabled={styleDisabled}
-            onChange={(event) => onFillColorChange(event.target.value)}
+            onChange={onFillColorChange}
           />
           <AlphaSlider
             label="Fill opacity"
@@ -152,11 +151,10 @@ export function Toolbar({
         {showTextControls ? (
           <label title="Text color">
             Text
-            <input
-              type="color"
+            <ColorInput
               value={textColor}
               disabled={styleDisabled}
-              onChange={(event) => onTextColorChange(event.target.value)}
+              onChange={onTextColorChange}
             />
             <AlphaSlider
               label="Text opacity"
@@ -208,6 +206,53 @@ export function Toolbar({
         </button>
       </div>
     </aside>
+  );
+}
+
+type ColorInputProps = {
+  value: string;
+  disabled: boolean;
+  onChange: (color: string) => void;
+};
+
+function ColorInput({ value, disabled, onChange }: ColorInputProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const pickerOpen = useRef(false);
+  const suppressNextClick = useRef(false);
+
+  return (
+    <input
+      ref={inputRef}
+      type="color"
+      value={value}
+      disabled={disabled}
+      onChange={(event) => {
+        pickerOpen.current = false;
+        onChange(event.target.value);
+      }}
+      onClick={(event) => {
+        if (suppressNextClick.current) {
+          event.preventDefault();
+          suppressNextClick.current = false;
+          return;
+        }
+        if (pickerOpen.current) {
+          event.preventDefault();
+          return;
+        }
+        pickerOpen.current = true;
+      }}
+      onPointerDown={(event) => {
+        if (!pickerOpen.current) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+        suppressNextClick.current = true;
+        pickerOpen.current = false;
+        inputRef.current?.blur();
+      }}
+    />
   );
 }
 

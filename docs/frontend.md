@@ -57,6 +57,8 @@ Icon-only buttons must include:
 
 Icon+text buttons should use `.inline-icon-button` or existing primary button styling with an icon and text span.
 
+Toolbar color swatches use native `<input type="color">` controls through `ColorInput`. The wrapper keeps the native swatch UI and suppresses the follow-up click when an already-open picker is pressed again.
+
 ## Whiteboard State
 
 `Whiteboard` owns UI-local state:
