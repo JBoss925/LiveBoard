@@ -31,6 +31,12 @@ type DeleteConfirmation = {
   canvases: CanvasSummary[];
 };
 
+const MIN_CANVAS_LOAD_MS = 450;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
 export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   const [canvases, setCanvases] = useState<CanvasSummary[]>([]);
   const [error, setError] = useState("");
@@ -54,6 +60,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
   async function loadCanvases() {
     setError("");
     setLoading(true);
+    const minimumLoad = delay(MIN_CANVAS_LOAD_MS);
     try {
       const nextCanvases = await api.listCanvases();
       setCanvases(nextCanvases);
@@ -67,6 +74,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load canvases");
     } finally {
+      await minimumLoad;
       setLoading(false);
     }
   }

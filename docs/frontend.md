@@ -71,6 +71,10 @@ Icon+text buttons should use `.inline-icon-button` or existing primary button st
 
 Live canvas state comes from `useCanvasSocket`.
 
+## Dashboard Loading
+
+Dashboard canvas refreshes keep the skeleton list visible for at least 450ms. This prevents fast local responses from flashing the loading state too quickly to read as intentional UI feedback.
+
 ## Hooks
 
 ### `useCanvasSocket`

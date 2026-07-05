@@ -73,9 +73,12 @@ export function CanvasListLoading() {
     <div className="canvas-list skeleton-list" role="status" aria-live="polite">
       {[0, 1, 2].map((item) => (
         <div className="canvas-row skeleton-row" key={item}>
-          <span>
-            <span className="skeleton-line skeleton-title" />
-            <span className="skeleton-line skeleton-small" />
+          <span className="skeleton-open">
+            <span className="skeleton-icon" />
+            <span className="skeleton-text">
+              <span className="skeleton-line skeleton-title" />
+              <span className="skeleton-line skeleton-small" />
+            </span>
           </span>
           <span className="skeleton-line skeleton-date" />
         </div>
