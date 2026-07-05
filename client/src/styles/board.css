@@ -280,7 +280,7 @@
 }
 
 .shape {
-  cursor: move;
+  cursor: pointer;
 }
 
 .selection rect {
@@ -289,6 +289,12 @@
   stroke: var(--steel-blue);
   stroke-dasharray: 8 5;
   stroke-width: 2;
+}
+
+.selection .selection-combined-target {
+  cursor: move;
+  fill: rgba(69, 123, 157, 0.04);
+  pointer-events: all;
 }
 
 .selection line {
@@ -304,6 +310,14 @@
   pointer-events: all;
   stroke: var(--steel-blue);
   stroke-width: 2;
+}
+
+.selection-box {
+  fill: rgba(69, 123, 157, 0.12);
+  pointer-events: none;
+  stroke: var(--steel-blue);
+  stroke-dasharray: 6 4;
+  stroke-width: 1.5;
 }
 
 .remote-cursor {

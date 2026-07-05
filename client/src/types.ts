@@ -8,6 +8,7 @@ export type ResizeHandle = "nw" | "ne" | "sw" | "se" | "start" | "end";
 export type BaseShape = {
   id: string;
   type: ShapeType;
+  groupId?: string | null;
   strokeColor: string;
   fillColor: string;
   strokeOpacity: number;
@@ -61,6 +62,7 @@ export type CanvasState = {
 };
 
 export type CanvasOperation =
+  | { id: string; kind: "batch"; ops: CanvasOperation[] }
   | { id: string; kind: "create_shape"; shape: Shape }
   | { id: string; kind: "update_canvas"; patch: Partial<CanvasState> }
   | { id: string; kind: "update_shape"; shapeId: string; patch: Partial<Shape> }

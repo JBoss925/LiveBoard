@@ -1,17 +1,21 @@
 import {
   getChangedFields,
   getShapeBounds,
+  normalizeBounds,
   moveShape,
   resizeShape,
   type Point,
+  type Bounds,
 } from "./geometry";
 import { makeOperationId } from "./operations";
 import type { HistoryEntry, ResizeHandle, Shape, ShapeType } from "../types";
 
 export type Interaction =
   | { mode: "idle" }
+  | { mode: "box_select"; start: Point; current: Point }
   | { mode: "draw"; tool: Exclude<ShapeType, "text">; start: Point; draft: Shape }
   | { mode: "move"; start: Point; before: Shape; last: Shape }
+  | { mode: "move_many"; start: Point; before: Shape[]; last: Shape[] }
   | { mode: "resize"; start: Point; handle: ResizeHandle; before: Shape; last: Shape };
 
 export const defaultInteraction: Interaction = { mode: "idle" };
@@ -48,6 +52,22 @@ export function moveFromPointer(
   );
 }
 
+export function moveManyFromPointer(
+  current: Extract<Interaction, { mode: "move_many" }>,
+  point: Point,
+): Shape[] {
+  return current.before.map((shape) =>
+    moveShape(shape, point.x - current.start.x, point.y - current.start.y),
+  );
+}
+
+export function boxFromPointer(
+  current: Extract<Interaction, { mode: "box_select" }>,
+  point: Point,
+): Bounds {
+  return normalizeBounds(current.start, point);
+}
+
 export function resizeFromPointer(
   current: Extract<Interaction, { mode: "resize" }>,
   point: Point,
@@ -59,6 +79,56 @@ export function resizeFromPointer(
     point.x - current.start.x,
     point.y - current.start.y,
   );
+}
+
+export function buildBatchHistory(before: Shape[], after: Shape[]): HistoryEntry | null {
+  const beforeById = new Map(before.map((shape) => [shape.id, shape]));
+  const updates = after
+    .map((shape) => {
+      const previous = beforeById.get(shape.id);
+      if (!previous) {
+        return null;
+      }
+      const patch = getChangedFields(previous, shape);
+      if (Object.keys(patch).length === 0) {
+        return null;
+      }
+      return {
+        before: previous,
+        after: shape,
+        patch,
+      };
+    })
+    .filter((item): item is { before: Shape; after: Shape; patch: Partial<Shape> } =>
+      Boolean(item),
+    );
+
+  if (updates.length === 0) {
+    return null;
+  }
+
+  return {
+    forward: {
+      id: makeOperationId(),
+      kind: "batch",
+      ops: updates.map((item) => ({
+        id: makeOperationId(),
+        kind: "update_shape",
+        shapeId: item.after.id,
+        patch: item.patch,
+      })),
+    },
+    inverse: {
+      id: makeOperationId(),
+      kind: "batch",
+      ops: updates.map((item) => ({
+        id: makeOperationId(),
+        kind: "update_shape",
+        shapeId: item.before.id,
+        patch: getChangedFields(item.after, item.before),
+      })),
+    },
+  };
 }
 
 export function isMeaningfulDraft(shape: Shape): boolean {

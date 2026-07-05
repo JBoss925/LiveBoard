@@ -166,12 +166,17 @@ Response:
 
 ```ts
 type CanvasOperation =
+  | { id: string; kind: "batch"; ops: CanvasOperation[] }
   | { id: string; kind: "create_shape"; shape: Shape }
   | { id: string; kind: "update_canvas"; patch: Partial<CanvasState> }
   | { id: string; kind: "update_shape"; shapeId: string; patch: Partial<Shape> }
   | { id: string; kind: "delete_shape"; shapeId: string }
   | { id: string; kind: "reorder_shape"; shapeId: string; toIndex: number };
 ```
+
+Shape objects may include optional `groupId: string`. Shapes with the same `groupId` are treated as one locked group by the frontend. `update_shape` can set `groupId` to a string to group a shape or to `null` to remove it from a group.
+
+`batch` applies child operations in order and is used when one user action must affect multiple shapes as one undoable operation. Nested `batch` operations are rejected.
 
 ## WebSocket API
 

@@ -26,6 +26,7 @@ type ToolbarProps = {
   canRedo: boolean;
   hasSelection: boolean;
   showTextControls: boolean;
+  styleDisabled?: boolean;
   onToolChange: (tool: Tool) => void;
   onStrokeColorChange: (color: string) => void;
   onFillColorChange: (color: string) => void;
@@ -68,6 +69,7 @@ export function Toolbar({
   canRedo,
   hasSelection,
   showTextControls,
+  styleDisabled = false,
   onToolChange,
   onStrokeColorChange,
   onFillColorChange,
@@ -114,16 +116,19 @@ export function Toolbar({
           <input
             type="color"
             value={strokeColor}
+            disabled={styleDisabled}
             onChange={(event) => onStrokeColorChange(event.target.value)}
           />
           <AlphaSlider
             label="Stroke opacity"
             value={strokeOpacity}
+            disabled={styleDisabled}
             onChange={onStrokeOpacityChange}
             onCommit={onStrokeOpacityCommit}
           />
           <StrokeWidthSlider
             value={strokeWidth}
+            disabled={styleDisabled}
             onChange={onStrokeWidthChange}
             onCommit={onStrokeWidthCommit}
           />
@@ -133,11 +138,13 @@ export function Toolbar({
           <input
             type="color"
             value={fillColor}
+            disabled={styleDisabled}
             onChange={(event) => onFillColorChange(event.target.value)}
           />
           <AlphaSlider
             label="Fill opacity"
             value={fillOpacity}
+            disabled={styleDisabled}
             onChange={onFillOpacityChange}
             onCommit={onFillOpacityCommit}
           />
@@ -148,16 +155,19 @@ export function Toolbar({
             <input
               type="color"
               value={textColor}
+              disabled={styleDisabled}
               onChange={(event) => onTextColorChange(event.target.value)}
             />
             <AlphaSlider
               label="Text opacity"
               value={textOpacity}
+              disabled={styleDisabled}
               onChange={onTextOpacityChange}
               onCommit={onTextOpacityCommit}
             />
             <TextSizeSlider
               value={textSize}
+              disabled={styleDisabled}
               onChange={onTextSizeChange}
               onCommit={onTextSizeCommit}
             />
@@ -203,11 +213,12 @@ export function Toolbar({
 
 type TextSizeSliderProps = {
   value: number;
+  disabled?: boolean;
   onChange: (size: number) => void;
   onCommit: (size: number) => void;
 };
 
-function TextSizeSlider({ value, onChange, onCommit }: TextSizeSliderProps) {
+function TextSizeSlider({ value, disabled = false, onChange, onCommit }: TextSizeSliderProps) {
   const roundedValue = Math.round(value);
   const commitCurrentValue = (event: { currentTarget: HTMLInputElement }) => {
     onCommit(Number(event.currentTarget.value));
@@ -225,6 +236,7 @@ function TextSizeSlider({ value, onChange, onCommit }: TextSizeSliderProps) {
         min="8"
         max="72"
         value={roundedValue}
+        disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
         onKeyUp={commitCurrentValue}
         onPointerUp={commitCurrentValue}
@@ -235,11 +247,12 @@ function TextSizeSlider({ value, onChange, onCommit }: TextSizeSliderProps) {
 
 type StrokeWidthSliderProps = {
   value: number;
+  disabled?: boolean;
   onChange: (width: number) => void;
   onCommit: (width: number) => void;
 };
 
-function StrokeWidthSlider({ value, onChange, onCommit }: StrokeWidthSliderProps) {
+function StrokeWidthSlider({ value, disabled = false, onChange, onCommit }: StrokeWidthSliderProps) {
   const roundedValue = Math.round(value);
   const commitCurrentValue = (event: { currentTarget: HTMLInputElement }) => {
     onCommit(Number(event.currentTarget.value));
@@ -257,6 +270,7 @@ function StrokeWidthSlider({ value, onChange, onCommit }: StrokeWidthSliderProps
         min="0"
         max="16"
         value={roundedValue}
+        disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
         onKeyUp={commitCurrentValue}
         onPointerUp={commitCurrentValue}
@@ -268,11 +282,12 @@ function StrokeWidthSlider({ value, onChange, onCommit }: StrokeWidthSliderProps
 type AlphaSliderProps = {
   label: string;
   value: number;
+  disabled?: boolean;
   onChange: (opacity: number) => void;
   onCommit: (opacity: number) => void;
 };
 
-function AlphaSlider({ label, value, onChange, onCommit }: AlphaSliderProps) {
+function AlphaSlider({ label, value, disabled = false, onChange, onCommit }: AlphaSliderProps) {
   const percent = Math.round(value * 100);
   const commitCurrentValue = (event: { currentTarget: HTMLInputElement }) => {
     onCommit(Number(event.currentTarget.value) / 100);
@@ -290,6 +305,7 @@ function AlphaSlider({ label, value, onChange, onCommit }: AlphaSliderProps) {
         min="0"
         max="100"
         value={percent}
+        disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value) / 100)}
         onKeyUp={commitCurrentValue}
         onPointerUp={commitCurrentValue}

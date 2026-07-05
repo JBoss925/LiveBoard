@@ -68,7 +68,7 @@
 
 1. Whiteboard renders an SVG viewport centered on canvas coordinate `0,0`.
 2. User scrolls over the canvas to zoom in or out around the cursor.
-3. User middle-button drags anywhere, or uses the select tool and drags the background, to pan the viewport.
+3. User middle-button drags anywhere to pan the viewport.
 4. Pan and zoom are local viewport state only; they do not create canvas history entries or affect other editors.
 
 ## Rename Canvas In Whiteboard
@@ -87,14 +87,17 @@
 4. Pointer up sends a `create_shape` history entry.
 5. Backend validates the operation, locks the canvas row, applies it, derives inverse operation, inserts `canvas_ops` and `canvas_history`, increments revision, and broadcasts `op_applied`.
 
-## Move Or Resize Shape
+## Select, Move, Or Resize Shapes
 
-1. User selects a shape.
-2. Pointer down on shape starts move; pointer down on handle starts resize.
-3. Pointer move applies local updates immediately for smoothness and sends throttled `preview_op` messages.
-4. Remote users apply previews transiently.
-5. Pointer up sends one durable `update_shape` history entry.
-6. Backend persists that single operation and increments revision once.
+1. With the select tool active, user left-drags on the canvas background to draw a selection rectangle.
+2. Pointer up selects every intersecting unlocked shape. If any grouped shape intersects, all shapes with that `groupId` are selected together.
+3. A single unlocked selected shape shows resize handles. Pointer down on a handle starts resize.
+4. Background left-drag is reserved for box selection; left-dragging an unlocked shape moves that shape.
+5. A selected group can be dragged as a unit by pointer down on one of its grouped shapes or on empty space inside the combined group bounding box.
+6. During resize or group drag, frontend applies optimistic local preview and sends throttled `preview_op` messages. Group drag previews use a `batch` operation so remote editors see every grouped member move together before pointer up.
+7. Revision does not increment during previews.
+8. Pointer up sends one durable history entry. Single resize uses `update_shape`; group move uses `batch`.
+9. Backend persists that operation and increments revision once.
 
 ## Edit Text
 
@@ -106,11 +109,12 @@
 
 ## Change Style
 
-1. User selects a shape.
-2. Toolbar syncs to selected shape values.
+1. User selects one or more unlocked shapes.
+2. Toolbar syncs only values shared by every relevant selected shape.
 3. Color input changes commit immediately.
 4. Opacity, stroke width, and text size sliders update toolbar state while dragging and commit on pointer/key release.
-5. Style updates are `update_shape` history entries.
+5. Style updates apply to every selected unlocked shape. One shape uses `update_shape`; multiple shapes use `batch`.
+6. Selecting a grouped shape leaves style controls editable as future drawing defaults, but does not apply style changes to grouped members because groups are locked.
 
 ## Paint Bucket
 
@@ -127,9 +131,20 @@
    - Bring forward
    - Send backward
    - Send to back
+   - Group or Ungroup when applicable
    - Delete
 3. Reorder sends `reorder_shape`; delete sends `delete_shape`.
 4. Both are undoable server-history entries.
+
+## Group Or Ungroup Shapes
+
+1. User box-selects two or more unlocked shapes.
+2. User right-clicks one selected shape and chooses Group.
+3. Frontend sends one undoable `batch` operation that sets the same `groupId` on every selected shape.
+4. The group shows one combined bounding box. Individual members cannot be selected, resized, text-edited, bucket-filled, or styled while grouped.
+5. User can drag a selected group as one unit from any grouped shape or from empty space inside the combined group bounding box.
+6. User right-clicks the selected group and chooses Ungroup.
+7. Frontend sends one undoable `batch` operation that clears `groupId` from every member.
 
 ## Undo And Redo
 

@@ -106,7 +106,7 @@ sequenceDiagram
   WS->>B: op_applied
 ```
 
-Previews are best-effort and not durable. Durable operations are serialized by `SELECT ... FOR UPDATE` on the canvas row.
+Previews are best-effort and not durable. Durable operations are serialized by `SELECT ... FOR UPDATE` on the canvas row. Multi-shape user actions are wrapped in `batch` operations so the database revision, audit log, and shared undo/redo history still treat the action as one coherent edit.
 
 ## Single-Server Assumption
 

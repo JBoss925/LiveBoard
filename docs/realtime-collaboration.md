@@ -64,11 +64,15 @@ Cursor `x` and `y` are canvas-world coordinates. They may be negative or large b
 { "type": "preview_op", "op": { "id": "...", "kind": "update_shape", "shapeId": "...", "patch": {} } }
 ```
 
+Group drag previews use the same message type with `kind: "batch"` and child `update_shape` operations. Previews are broadcast to other editors and are not written to PostgreSQL.
+
 ```json
 { "type": "op", "op": { "id": "...", "kind": "create_shape", "shape": {} }, "history": { "inverse": {} } }
 ```
 
 The backend no longer trusts the client-provided inverse, but the presence of `history.inverse` marks the operation as undoable. The server derives the true inverse from locked canvas state.
+
+Multi-shape user actions use `kind: "batch"` with child operations applied in order. The backend derives a single inverse batch, so grouping, ungrouping, multi-style edits, and group moves share one undo/redo step for every connected editor.
 
 ```json
 { "type": "undo" }

@@ -34,6 +34,37 @@ export function getShapeBounds(shape: Shape): Bounds {
   };
 }
 
+export function normalizeBounds(start: Point, end: Point): Bounds {
+  return {
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y),
+  };
+}
+
+export function getCombinedBounds(shapes: Shape[]): Bounds | null {
+  if (shapes.length === 0) {
+    return null;
+  }
+
+  const bounds = shapes.map(getShapeBounds);
+  const minX = Math.min(...bounds.map((item) => item.x));
+  const minY = Math.min(...bounds.map((item) => item.y));
+  const maxX = Math.max(...bounds.map((item) => item.x + item.width));
+  const maxY = Math.max(...bounds.map((item) => item.y + item.height));
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+export function boundsIntersect(a: Bounds, b: Bounds): boolean {
+  return (
+    a.x <= b.x + b.width &&
+    a.x + a.width >= b.x &&
+    a.y <= b.y + b.height &&
+    a.y + a.height >= b.y
+  );
+}
+
 export function hitTestShape(shape: Shape, point: Point): boolean {
   if (shape.type === "line") {
     return distanceToSegment(point, { x: shape.x1, y: shape.y1 }, { x: shape.x2, y: shape.y2 }) <= 8;

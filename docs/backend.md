@@ -124,3 +124,9 @@ Backend errors generally use FastAPI `HTTPException` with JSON:
 ```
 
 Frontend `api.ts` formats string, object, and Pydantic validation-array details into user-readable messages.
+
+## Canvas Operation Rules
+
+`validation.py` accepts `create_shape`, `update_canvas`, `update_shape`, `delete_shape`, `reorder_shape`, and non-nested `batch` operations. `batch` operations may contain up to 100 child operations and are used for one user action that touches multiple shapes.
+
+Shape patches may include optional `groupId`. A string `groupId` groups shapes together on the frontend; `groupId: null` removes the field during operation application. `canvas_ops.py` applies batch children in order and derives inverse batch operations from the locked authoritative canvas state.

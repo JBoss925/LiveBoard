@@ -6,7 +6,7 @@ type UseWhiteboardKeyboardOptions = {
   onDelete: () => void;
   onRedo: () => void;
   onUndo: () => void;
-  setSelectedId: (shapeId: string | null) => void;
+  setSelectedIds: (shapeIds: string[]) => void;
 };
 
 export function useWhiteboardKeyboard({
@@ -14,7 +14,7 @@ export function useWhiteboardKeyboard({
   onDelete,
   onRedo,
   onUndo,
-  setSelectedId,
+  setSelectedIds,
 }: UseWhiteboardKeyboardOptions) {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -41,7 +41,7 @@ export function useWhiteboardKeyboard({
       }
       if (event.key === "Escape") {
         interaction.current = defaultInteraction;
-        setSelectedId(null);
+        setSelectedIds([]);
       }
     }
 

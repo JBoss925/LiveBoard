@@ -1,20 +1,47 @@
 import type { PointerEvent } from "react";
-import { getShapeBounds } from "../../lib/geometry";
+import { getCombinedBounds, getShapeBounds } from "../../lib/geometry";
 import type { ResizeHandle, Shape } from "../../types";
 
 type SelectionOverlayProps = {
-  shape: Shape;
+  shapes: Shape[];
   onHandlePointerDown: (
     event: PointerEvent<SVGElement>,
     handle: ResizeHandle,
     shape: Shape,
   ) => void;
+  onSelectionPointerDown: (event: PointerEvent<SVGElement>) => void;
 };
 
 export function SelectionOverlay({
-  shape,
+  shapes,
   onHandlePointerDown,
+  onSelectionPointerDown,
 }: SelectionOverlayProps) {
+  const shape = shapes[0];
+  if (!shape) {
+    return null;
+  }
+
+  const isSingleUnlockedShape = shapes.length === 1 && !shape.groupId;
+  if (!isSingleUnlockedShape) {
+    const bounds = getCombinedBounds(shapes);
+    if (!bounds) {
+      return null;
+    }
+    return (
+      <g className="selection selection-combined">
+        <rect
+          className="selection-combined-target"
+          x={bounds.x}
+          y={bounds.y}
+          width={bounds.width}
+          height={bounds.height}
+          onPointerDown={onSelectionPointerDown}
+        />
+      </g>
+    );
+  }
+
   if (shape.type === "line") {
     return (
       <g className="selection">

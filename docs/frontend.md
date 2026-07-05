@@ -47,7 +47,7 @@ Current icon usage includes:
 - navigation/sharing: back, share/collaborators, close
 - dashboard actions: refresh, logout, create
 - dashboard list actions: select all, delete selected, context-menu open/share/rename/delete
-- context menu actions: bring/send ordering and delete
+- context menu actions: bring/send ordering, group/ungroup, and delete
 
 Icon-only buttons must include:
 
@@ -62,7 +62,8 @@ Icon+text buttons should use `.inline-icon-button` or existing primary button st
 `Whiteboard` owns UI-local state:
 
 - selected tool
-- selected shape id
+- selected shape ids
+- transient box-selection bounds
 - current toolbar style values
 - context menu position
 - share modal open/closed
@@ -114,15 +115,16 @@ Receives and applies:
 Owns pointer interaction state:
 
 - idle
+- box-selecting
 - drawing
-- moving
+- moving unlocked shapes and grouped shapes
 - resizing
 
-It converts pointer events into local optimistic updates, transient previews, and final durable history entries.
+It converts pointer events into local optimistic updates, transient previews, selection changes, and final durable history entries. Grouping, ungrouping, multi-style edits, and group moves are sent as `batch` operations so they undo and redo as one shared history entry.
 
 ### `useLiveShapeUpdates`
 
-Throttles drag/resize previews to roughly one every 45ms. These previews are sent as `preview_op` and are not persisted.
+Throttles drag/resize previews to roughly one every 45ms. Single-shape previews are sent as `update_shape`; group drag previews are sent as `batch` operations containing per-shape `update_shape` patches. These previews are sent as `preview_op` and are not persisted.
 
 ### `useCanvasHistory`
 
@@ -139,7 +141,7 @@ Small adapter over server history:
 
 Keyboard shortcuts:
 
-- Delete/Backspace deletes selected shape.
+- Delete/Backspace deletes selected unlocked shapes.
 - Cmd/Ctrl+Z undo.
 - Cmd/Ctrl+Shift+Z redo.
 - Cmd/Ctrl+Y redo.
@@ -156,7 +158,7 @@ Viewport controls:
 - mouse wheel zooms around the cursor
 - zoom is clamped between `0.15x` and `6x`
 - middle-button drag pans from any canvas point
-- with the select tool active, dragging the background also pans
+- with the select tool active, left-dragging the background draws a box selection
 
 Remote cursors are positioned in canvas coordinates but inverse-scaled by the current zoom so they keep a consistent on-screen size.
 
@@ -175,8 +177,10 @@ The frontend applies outgoing durable operations locally before server acknowled
 
 ## Toolbar Synchronization
 
-When selection changes, `Whiteboard` copies selected shape style values into toolbar state. This makes the controls reflect the selected object:
+When selection changes, `Whiteboard` copies shared selected-shape style values into toolbar state. A value is copied only when every relevant selected shape shares it. This makes controls reflect single-object selections and homogeneous multi-selections:
 
 - stroke color/opacity/width
 - fill color/opacity
 - text color/opacity/size for text shapes
+
+Grouped shapes are locked for editing. Selecting a grouped object selects every shape with the same `groupId`, shows one combined selection box, hides resize handles, and allows movement only as a grouped unit. Toolbar style controls remain editable as drawing defaults, but their changes do not apply to grouped members. The combined selection box itself is a pointer target, so dragging empty space inside the group bounds moves the group instead of starting background box selection. Ungrouping clears `groupId` on every member.

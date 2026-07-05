@@ -8,6 +8,9 @@ export function applyOperation(
   state: CanvasState,
   op: CanvasOperation,
 ): CanvasState {
+  if (op.kind === "batch") {
+    return op.ops.reduce((nextState, childOp) => applyOperation(nextState, childOp), state);
+  }
   if (op.kind === "create_shape") {
     if (state.shapes.some((shape) => shape.id === op.shape.id)) {
       return state;
@@ -26,9 +29,17 @@ export function applyOperation(
   return {
     ...state,
     shapes: state.shapes.map((shape) =>
-      shape.id === op.shapeId ? ({ ...shape, ...op.patch } as Shape) : shape,
+      shape.id === op.shapeId ? applyShapePatch(shape, op.patch) : shape,
     ),
   };
+}
+
+function applyShapePatch(shape: Shape, patch: Partial<Shape>): Shape {
+  const next = { ...shape, ...patch } as Shape;
+  if (next.groupId === null) {
+    delete next.groupId;
+  }
+  return next;
 }
 
 export function reorderShape(shapes: Shape[], shapeId: string, toIndex: number): Shape[] {

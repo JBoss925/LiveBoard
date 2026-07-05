@@ -14,14 +14,16 @@ import {
   ArrowUpToLine,
   ChevronsDown,
   ChevronsUp,
+  Group,
   Trash2,
+  Ungroup,
 } from "lucide-react";
 import * as api from "../api";
 import { useCanvasHistory } from "../hooks/useCanvasHistory";
 import { useCanvasSocket } from "../hooks/useCanvasSocket";
 import { useLiveShapeUpdates } from "../hooks/useLiveShapeUpdates";
 import { useWhiteboardInteractions } from "../hooks/useWhiteboardInteractions";
-import { getChangedFields } from "../lib/geometry";
+import { getChangedFields, type Bounds } from "../lib/geometry";
 import { findShape, makeOperationId } from "../lib/operations";
 import type { Shape, TextShape, Tool, User } from "../types";
 import { ShareModal } from "./ShareModal";
@@ -39,6 +41,17 @@ type ContextMenuState = {
   shapeId: string;
   x: number;
   y: number;
+};
+
+type SharedSelectionValues = {
+  strokeColor?: string;
+  fillColor?: string;
+  textColor?: string;
+  strokeOpacity?: number;
+  fillOpacity?: number;
+  textOpacity?: number;
+  strokeWidth?: number;
+  fontSize?: number;
 };
 
 type TextEditState = {
@@ -71,6 +84,28 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
+function sharedValue<T>(values: T[]): T | undefined {
+  if (values.length === 0) {
+    return undefined;
+  }
+  return values.every((value) => value === values[0]) ? values[0] : undefined;
+}
+
+function getSharedSelectionValues(shapes: Shape[]): SharedSelectionValues {
+  const filledShapes = shapes.filter((shape) => shape.type !== "line");
+  const textShapes = shapes.filter((shape) => shape.type === "text");
+  return {
+    strokeColor: sharedValue(shapes.map((shape) => shape.strokeColor)),
+    fillColor: sharedValue(filledShapes.map((shape) => shape.fillColor)),
+    textColor: sharedValue(textShapes.map((shape) => shape.textColor)),
+    strokeOpacity: sharedValue(shapes.map((shape) => shape.strokeOpacity ?? 1)),
+    fillOpacity: sharedValue(filledShapes.map((shape) => shape.fillOpacity ?? 1)),
+    textOpacity: sharedValue(textShapes.map((shape) => shape.textOpacity ?? 1)),
+    strokeWidth: sharedValue(shapes.map((shape) => shape.strokeWidth)),
+    fontSize: sharedValue(textShapes.map((shape) => shape.fontSize)),
+  };
+}
+
 export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   const socket = useCanvasSocket(canvasId);
   const history = useCanvasHistory({
@@ -99,7 +134,8 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   const [textOpacity, setTextOpacity] = useState(1);
   const [strokeWidth, setStrokeWidth] = useState(2);
   const [textSize, setTextSize] = useState(20);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [selectionBox, setSelectionBox] = useState<Bounds | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [textEdit, setTextEdit] = useState<TextEditState | null>(null);
@@ -118,9 +154,22 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     return `${viewport.centerX - width / 2} ${viewport.centerY - height / 2} ${width} ${height}`;
   }, [viewport]);
 
-  const selectedShape = useMemo(
-    () => findShape(socket.state, selectedId),
-    [socket.state, selectedId],
+  const selectedShapes = useMemo(
+    () =>
+      selectedIds
+        .map((shapeId) => findShape(socket.state, shapeId))
+        .filter((shape): shape is Shape => Boolean(shape)),
+    [socket.state, selectedIds],
+  );
+  const selectedShape = selectedShapes.length === 1 ? selectedShapes[0] : null;
+  const isGroupedSelection = Boolean(
+    selectedShapes.length > 0 &&
+      selectedShapes[0].groupId &&
+      selectedShapes.every((shape) => shape.groupId === selectedShapes[0].groupId),
+  );
+  const sharedSelectionValues = useMemo(
+    () => getSharedSelectionValues(selectedShapes),
+    [selectedShapes],
   );
 
   const interactions = useWhiteboardInteractions({
@@ -129,10 +178,11 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     fillOpacity,
     history,
     liveUpdates,
-    selectedId,
-    selectedShape,
+    selectedIds,
+    selectedShapes,
     setLocalState: socket.setLocalState,
-    setSelectedId,
+    setSelectedIds,
+    setSelectionBox,
     setTool,
     strokeColor,
     strokeOpacity,
@@ -202,10 +252,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }
 
   function shouldPanCanvas(event: PointerEvent<SVGSVGElement>): boolean {
-    const target = event.target;
-    const isBackground =
-      target instanceof SVGElement && target.dataset.canvasBackground === "true";
-    return event.button === 1 || (tool === "select" && isBackground);
+    return event.button === 1;
   }
 
   function startCanvasPan(event: PointerEvent<SVGElement>) {
@@ -223,7 +270,6 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   function handleCanvasPointerDown(event: PointerEvent<SVGSVGElement>) {
     if (shouldPanCanvas(event)) {
       startCanvasPan(event);
-      setSelectedId(null);
       return;
     }
 
@@ -292,28 +338,40 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }
 
   useEffect(() => {
-    if (selectedId && !selectedShape) {
-      setSelectedId(null);
-    }
-  }, [selectedId, selectedShape]);
+    setSelectedIds((current) =>
+      current.filter((shapeId) => socket.state.shapes.some((shape) => shape.id === shapeId)),
+    );
+  }, [socket.state.shapes]);
 
   useEffect(() => {
-    if (!selectedShape) {
+    if (selectedShapes.length === 0 || isGroupedSelection) {
       return;
     }
-    setStrokeColor(selectedShape.strokeColor);
-    setStrokeOpacity(selectedShape.strokeOpacity ?? 1);
-    setStrokeWidth(selectedShape.strokeWidth);
-    if (selectedShape.type !== "line") {
-      setFillColor(selectedShape.fillColor);
-      setFillOpacity(selectedShape.fillOpacity ?? 1);
+    if (sharedSelectionValues.strokeColor) {
+      setStrokeColor(sharedSelectionValues.strokeColor);
     }
-    if (selectedShape.type === "text") {
-      setTextColor(selectedShape.textColor ?? selectedShape.strokeColor);
-      setTextOpacity(selectedShape.textOpacity ?? selectedShape.strokeOpacity ?? 1);
-      setTextSize(selectedShape.fontSize);
+    if (sharedSelectionValues.strokeOpacity !== undefined) {
+      setStrokeOpacity(sharedSelectionValues.strokeOpacity);
     }
-  }, [selectedShape]);
+    if (sharedSelectionValues.strokeWidth !== undefined) {
+      setStrokeWidth(sharedSelectionValues.strokeWidth);
+    }
+    if (sharedSelectionValues.fillColor) {
+      setFillColor(sharedSelectionValues.fillColor);
+    }
+    if (sharedSelectionValues.fillOpacity !== undefined) {
+      setFillOpacity(sharedSelectionValues.fillOpacity);
+    }
+    if (sharedSelectionValues.textColor) {
+      setTextColor(sharedSelectionValues.textColor);
+    }
+    if (sharedSelectionValues.textOpacity !== undefined) {
+      setTextOpacity(sharedSelectionValues.textOpacity);
+    }
+    if (sharedSelectionValues.fontSize !== undefined) {
+      setTextSize(sharedSelectionValues.fontSize);
+    }
+  }, [isGroupedSelection, selectedShapes.length, sharedSelectionValues]);
 
   useEffect(() => {
     if (!contextMenu) {
@@ -331,7 +389,15 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   function handleShapeContextMenu(event: MouseEvent<SVGElement>, shape: Shape) {
     event.preventDefault();
     event.stopPropagation();
-    setSelectedId(shape.id);
+    if (!selectedIds.includes(shape.id)) {
+      setSelectedIds(
+        shape.groupId
+          ? socket.state.shapes
+              .filter((item) => item.groupId === shape.groupId)
+              .map((item) => item.id)
+          : [shape.id],
+      );
+    }
     setContextMenu({ shapeId: shape.id, x: event.clientX, y: event.clientY });
   }
 
@@ -376,7 +442,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
       return;
     }
     committedTextEditId.current = null;
-    setSelectedId(shape.id);
+    setSelectedIds([shape.id]);
     setTextEdit({ shapeId: shape.id, value: shape.text });
   }
 
@@ -411,6 +477,14 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     });
   }
 
+  const hasSelection = selectedShapes.length > 0;
+  const canEditSelection = hasSelection && !isGroupedSelection;
+  const selectionHasFill = canEditSelection && selectedShapes.some((shape) => shape.type !== "line");
+  const selectionIsOnlyText =
+    canEditSelection &&
+    selectedShapes.length > 0 &&
+    selectedShapes.every((shape) => shape.type === "text");
+
   return (
     <main className="board-shell">
       <BoardHeader
@@ -441,8 +515,8 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
           textSize={textSize}
           canUndo={history.canUndo}
           canRedo={history.canRedo}
-          hasSelection={Boolean(selectedShape)}
-          showTextControls={selectedShape?.type === "text"}
+          hasSelection={canEditSelection}
+          showTextControls={selectionIsOnlyText}
           onToolChange={setTool}
           onStrokeColorChange={(color) => {
             setStrokeColor(color);
@@ -450,13 +524,13 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
           }}
           onFillColorChange={(color) => {
             setFillColor(color);
-            if (selectedShape?.type !== "line") {
+            if (selectionHasFill) {
               interactions.updateSelectedColor({ fillColor: color } as Partial<Shape>);
             }
           }}
           onTextColorChange={(color) => {
             setTextColor(color);
-            if (selectedShape?.type === "text") {
+            if (selectionIsOnlyText) {
               interactions.updateSelectedColor({ textColor: color } as Partial<Shape>);
             }
           }}
@@ -479,12 +553,12 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
             interactions.updateSelectedColor({ strokeOpacity: opacity } as Partial<Shape>);
           }}
           onFillOpacityCommit={(opacity) => {
-            if (selectedShape?.type !== "line") {
+            if (selectionHasFill) {
               interactions.updateSelectedColor({ fillOpacity: opacity } as Partial<Shape>);
             }
           }}
           onTextOpacityCommit={(opacity) => {
-            if (selectedShape?.type === "text") {
+            if (selectionIsOnlyText) {
               interactions.updateSelectedColor({ textOpacity: opacity } as Partial<Shape>);
             }
           }}
@@ -492,7 +566,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
             interactions.updateSelectedColor({ strokeWidth: width } as Partial<Shape>);
           }}
           onTextSizeCommit={(size) => {
-            if (selectedShape?.type === "text") {
+            if (selectionIsOnlyText) {
               interactions.updateSelectedColor({ fontSize: size } as Partial<Shape>);
             }
           }}
@@ -531,7 +605,8 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
             <CanvasSvg
               canvasState={socket.state}
               remoteCursors={socket.remoteCursors}
-              selectedShape={selectedShape}
+              selectedShapes={selectedShapes}
+              selectionBox={selectionBox}
               textEditor={
                 textEdit && selectedShape?.type === "text" ? (
                   <InlineTextEditor
@@ -555,6 +630,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
               onWheel={handleCanvasWheel}
               onShapePointerDown={handleShapePointerDown}
               onShapeContextMenu={handleShapeContextMenu}
+              onSelectionPointerDown={interactions.handleSelectionPointerDown}
               onHandlePointerDown={interactions.handleHandlePointerDown}
               onTextDoubleClick={interactions.handleTextDoubleClick}
             />
@@ -570,6 +646,16 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
                   interactions.deleteSelectedShape();
                   setContextMenu(null);
                 }}
+                onGroup={() => {
+                  interactions.groupSelection();
+                  setContextMenu(null);
+                }}
+                onUngroup={() => {
+                  interactions.ungroupSelection();
+                  setContextMenu(null);
+                }}
+                showGroup={selectedShapes.length > 1 && !isGroupedSelection}
+                showUngroup={isGroupedSelection}
               />
             ) : null}
           </div>
@@ -652,6 +738,10 @@ type ShapeContextMenuProps = {
   onSendBackward: () => void;
   onSendToBack: () => void;
   onDelete: () => void;
+  onGroup: () => void;
+  onUngroup: () => void;
+  showGroup: boolean;
+  showUngroup: boolean;
 };
 
 function ShapeContextMenu({
@@ -662,6 +752,10 @@ function ShapeContextMenu({
   onSendBackward,
   onSendToBack,
   onDelete,
+  onGroup,
+  onUngroup,
+  showGroup,
+  showUngroup,
 }: ShapeContextMenuProps) {
   return (
     <div
@@ -685,6 +779,18 @@ function ShapeContextMenu({
         <ArrowDownToLine aria-hidden="true" size={16} />
         <span>Send to back</span>
       </button>
+      {showGroup ? (
+        <button onClick={onGroup} type="button">
+          <Group aria-hidden="true" size={16} />
+          <span>Group</span>
+        </button>
+      ) : null}
+      {showUngroup ? (
+        <button onClick={onUngroup} type="button">
+          <Ungroup aria-hidden="true" size={16} />
+          <span>Ungroup</span>
+        </button>
+      ) : null}
       <button className="danger" onClick={onDelete} type="button">
         <Trash2 aria-hidden="true" size={16} />
         <span>Delete</span>

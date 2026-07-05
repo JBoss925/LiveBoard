@@ -10,10 +10,14 @@ type UseLiveShapeUpdatesOptions = {
 export function useLiveShapeUpdates({ sendPreviewOperation }: UseLiveShapeUpdatesOptions) {
   const timeout = useRef<number | undefined>(undefined);
   const lastRun = useRef(0);
-  const latest = useRef<{ shape: Shape; before: Shape } | null>(null);
+  const latest = useRef<{ shapes: Shape[]; before: Shape[] } | null>(null);
 
   function sendLiveUpdate(shape: Shape, before: Shape) {
-    latest.current = { shape, before };
+    sendLiveUpdates([shape], [before]);
+  }
+
+  function sendLiveUpdates(shapes: Shape[], before: Shape[]) {
+    latest.current = { shapes, before };
     window.clearTimeout(timeout.current);
 
     const run = () => {
@@ -24,17 +28,32 @@ export function useLiveShapeUpdates({ sendPreviewOperation }: UseLiveShapeUpdate
       latest.current = null;
       lastRun.current = Date.now();
 
-      const patch = getChangedFields(update.before, update.shape);
-      if (Object.keys(patch).length === 0) {
+      const ops = update.shapes
+        .map((shape, index): CanvasOperation | null => {
+          const previous = update.before[index];
+          if (!previous) {
+            return null;
+          }
+          const patch = getChangedFields(previous, shape);
+          if (Object.keys(patch).length === 0) {
+            return null;
+          }
+          return {
+            id: makeOperationId(),
+            kind: "update_shape",
+            shapeId: shape.id,
+            patch,
+          };
+        })
+        .filter((op): op is CanvasOperation => Boolean(op));
+
+      if (ops.length === 0) {
         return;
       }
 
-      sendPreviewOperation({
-        id: makeOperationId(),
-        kind: "update_shape",
-        shapeId: update.shape.id,
-        patch,
-      });
+      sendPreviewOperation(
+        ops.length === 1 ? ops[0] : { id: makeOperationId(), kind: "batch", ops },
+      );
     };
 
     const elapsed = Date.now() - lastRun.current;
@@ -52,5 +71,5 @@ export function useLiveShapeUpdates({ sendPreviewOperation }: UseLiveShapeUpdate
     latest.current = null;
   }
 
-  return { cancelPendingLiveUpdate, sendLiveUpdate };
+  return { cancelPendingLiveUpdate, sendLiveUpdate, sendLiveUpdates };
 }

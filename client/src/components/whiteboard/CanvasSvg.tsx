@@ -5,6 +5,7 @@ import {
   type ResizeHandle,
   type Shape,
 } from "../../types";
+import type { Bounds } from "../../lib/geometry";
 import { RemoteCursorLayer } from "./RemoteCursorLayer";
 import { SelectionOverlay } from "./SelectionOverlay";
 import { ShapeRenderer } from "./ShapeRenderer";
@@ -12,7 +13,8 @@ import { ShapeRenderer } from "./ShapeRenderer";
 type CanvasSvgProps = {
   canvasState: CanvasState;
   remoteCursors: RemoteCursor[];
-  selectedShape: Shape | null;
+  selectedShapes: Shape[];
+  selectionBox: Bounds | null;
   textEditor: ReactNode;
   svgRef: React.RefObject<SVGSVGElement | null>;
   viewBox: string;
@@ -23,6 +25,7 @@ type CanvasSvgProps = {
   onWheel: (event: WheelEvent<SVGSVGElement>) => void;
   onShapePointerDown: (event: PointerEvent<SVGElement>, shape: Shape) => void;
   onShapeContextMenu: (event: MouseEvent<SVGElement>, shape: Shape) => void;
+  onSelectionPointerDown: (event: PointerEvent<SVGElement>) => void;
   onHandlePointerDown: (
     event: PointerEvent<SVGElement>,
     handle: ResizeHandle,
@@ -34,7 +37,8 @@ type CanvasSvgProps = {
 export function CanvasSvg({
   canvasState,
   remoteCursors,
-  selectedShape,
+  selectedShapes,
+  selectionBox,
   textEditor,
   svgRef,
   viewBox,
@@ -45,6 +49,7 @@ export function CanvasSvg({
   onWheel,
   onShapePointerDown,
   onShapeContextMenu,
+  onSelectionPointerDown,
   onHandlePointerDown,
   onTextDoubleClick,
 }: CanvasSvgProps) {
@@ -77,10 +82,20 @@ export function CanvasSvg({
           onDoubleClick={onTextDoubleClick}
         />
       ))}
-      {selectedShape ? (
+      {selectedShapes.length > 0 ? (
         <SelectionOverlay
-          shape={selectedShape}
+          shapes={selectedShapes}
           onHandlePointerDown={onHandlePointerDown}
+          onSelectionPointerDown={onSelectionPointerDown}
+        />
+      ) : null}
+      {selectionBox ? (
+        <rect
+          className="selection-box"
+          x={selectionBox.x}
+          y={selectionBox.y}
+          width={selectionBox.width}
+          height={selectionBox.height}
         />
       ) : null}
       {textEditor}

@@ -10,11 +10,12 @@ MAX_SHAPES_PER_CANVAS = 500
 MAX_OP_PATCH_FIELDS = 16
 
 SHAPE_TYPES = {"rect", "ellipse", "line", "text"}
-OP_KINDS = {"create_shape", "update_canvas", "update_shape", "delete_shape", "reorder_shape"}
+OP_KINDS = {"batch", "create_shape", "update_canvas", "update_shape", "delete_shape", "reorder_shape"}
 HEX_COLOR_LENGTHS = {4, 7}
 COMMON_FIELDS = {
     "id",
     "type",
+    "groupId",
     "strokeColor",
     "fillColor",
     "strokeOpacity",
@@ -43,13 +44,25 @@ def validate_canvas_name(value: str) -> str:
     return name
 
 
-def validate_operation(op: dict[str, Any]) -> None:
+def validate_operation(op: dict[str, Any], depth: int = 0) -> None:
     if not isinstance(op.get("id"), str) or len(op["id"]) > 80:
         raise ValueError("Invalid operation id")
     if op.get("kind") not in OP_KINDS:
         raise ValueError("Invalid operation kind")
 
     kind = op["kind"]
+    if kind == "batch":
+        if depth > 0:
+            raise ValueError("Nested batch operations are not supported")
+        ops = op.get("ops")
+        if not isinstance(ops, list) or not ops or len(ops) > 100:
+            raise ValueError("Invalid batch operation")
+        for child_op in ops:
+            if not isinstance(child_op, dict):
+                raise ValueError("Invalid batch operation")
+            validate_operation(child_op, depth + 1)
+        return
+
     if kind == "create_shape":
         validate_shape(op.get("shape"))
         return
@@ -70,6 +83,14 @@ def validate_operation(op: dict[str, Any]) -> None:
 
 
 def validate_shape_count(state: dict[str, Any], op: dict[str, Any]) -> None:
+    if op.get("kind") == "batch":
+        create_count = sum(1 for child_op in op.get("ops", []) if child_op.get("kind") == "create_shape")
+        shapes = state.get("shapes")
+        if isinstance(shapes, list) and len(shapes) + create_count > MAX_SHAPES_PER_CANVAS:
+            raise ValueError("Canvas shape limit reached")
+        for child_op in op.get("ops", []):
+            validate_shape_count(state, child_op)
+        return
     if op.get("kind") != "create_shape":
         return
     shapes = state.get("shapes")
@@ -142,6 +163,11 @@ def validate_common_style(value: dict[str, Any], partial: bool = False) -> None:
         raise ValueError("Invalid timestamp")
     if "createdBy" in value and not isinstance(value["createdBy"], str):
         raise ValueError("Invalid creator")
+    if "groupId" in value:
+        if value["groupId"] is not None and not isinstance(value["groupId"], str):
+            raise ValueError("Invalid group id")
+        if isinstance(value["groupId"], str) and len(value["groupId"]) > 80:
+            raise ValueError("Invalid group id")
 
 
 def validate_rect_like(value: dict[str, Any], partial: bool = False) -> None:

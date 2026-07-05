@@ -1,20 +1,31 @@
 import { MouseEvent, PointerEvent, RefObject, useRef } from "react";
-import { getChangedFields, getSvgPoint, type Point } from "../lib/geometry";
+import {
+  boundsIntersect,
+  getChangedFields,
+  getShapeBounds,
+  getSvgPoint,
+  normalizeBounds,
+  type Bounds,
+  type Point,
+} from "../lib/geometry";
 import { applyOperation, makeOperationId } from "../lib/operations";
 import { createBaseShape } from "../lib/shapeFactory";
 import {
+  boxFromPointer,
+  buildBatchHistory,
   buildTransformHistory,
   defaultInteraction,
   isMeaningfulDraft,
   moveFromPointer,
+  moveManyFromPointer,
   resizeFromPointer,
   updateDraftFromPointer,
   type Interaction,
 } from "../lib/whiteboardInteraction";
 import { useWhiteboardKeyboard } from "./useWhiteboardKeyboard";
 import type {
-  CanvasState,
   CanvasOperation,
+  CanvasState,
   HistoryEntry,
   ResizeHandle,
   Shape,
@@ -31,6 +42,7 @@ type CanvasHistoryApi = {
 type LiveUpdateApi = {
   cancelPendingLiveUpdate: () => void;
   sendLiveUpdate: (shape: Shape, before: Shape) => void;
+  sendLiveUpdates: (shapes: Shape[], before: Shape[]) => void;
 };
 
 type UseWhiteboardInteractionsOptions = {
@@ -39,10 +51,11 @@ type UseWhiteboardInteractionsOptions = {
   fillOpacity: number;
   history: CanvasHistoryApi;
   liveUpdates: LiveUpdateApi;
-  selectedId: string | null;
-  selectedShape: Shape | null;
+  selectedIds: string[];
+  selectedShapes: Shape[];
   setLocalState: React.Dispatch<React.SetStateAction<CanvasState>>;
-  setSelectedId: (shapeId: string | null) => void;
+  setSelectedIds: (shapeIds: string[]) => void;
+  setSelectionBox: (box: Bounds | null) => void;
   setTool: (tool: Tool) => void;
   strokeColor: string;
   strokeOpacity: number;
@@ -54,16 +67,19 @@ type UseWhiteboardInteractionsOptions = {
   onStartTextEdit: (shape: Shape) => void;
 };
 
+const MIN_BOX_SELECT_SIZE = 4;
+
 export function useWhiteboardInteractions({
   canvasState,
   fillColor,
   fillOpacity,
   history,
   liveUpdates,
-  selectedId,
-  selectedShape,
+  selectedIds,
+  selectedShapes,
   setLocalState,
-  setSelectedId,
+  setSelectedIds,
+  setSelectionBox,
   setTool,
   strokeColor,
   strokeOpacity,
@@ -87,35 +103,53 @@ export function useWhiteboardInteractions({
     return getSvgPoint(event, svgRef.current);
   }
 
+  function selectShape(shape: Shape) {
+    setSelectedIds(shape.groupId ? getGroupShapeIds(shape.groupId) : [shape.id]);
+  }
+
+  function getGroupShapeIds(groupId: string): string[] {
+    return canvasState.shapes
+      .filter((shape) => shape.groupId === groupId)
+      .map((shape) => shape.id);
+  }
+
+  function isGroupedSelection(): boolean {
+    return Boolean(
+      selectedShapes.length > 0 &&
+        selectedShapes[0].groupId &&
+        selectedShapes.every((shape) => shape.groupId === selectedShapes[0].groupId),
+    );
+  }
+
+  function editableSelection(): Shape[] {
+    return isGroupedSelection() ? [] : selectedShapes;
+  }
+
+  function buildSelectionUpdate(patch: Partial<Shape>): HistoryEntry | null {
+    const shapes = editableSelection();
+    const after = shapes.map(
+      (shape) => ({ ...shape, ...patch, updatedAt: Date.now() }) as Shape,
+    );
+    if (shapes.length === 1) {
+      return buildTransformHistory(shapes[0], after[0]);
+    }
+    return buildBatchHistory(shapes, after);
+  }
+
   function finalizeCreate(shape: Shape) {
     history.sendWithHistory({
       forward: { id: makeOperationId(), kind: "create_shape", shape },
       inverse: { id: makeOperationId(), kind: "delete_shape", shapeId: shape.id },
     });
-    setSelectedId(shape.id);
+    setSelectedIds([shape.id]);
     setTool("select");
   }
 
   function updateSelectedColor(patch: Partial<Shape>) {
-    if (!selectedShape) {
-      return;
+    const entry = buildSelectionUpdate(patch);
+    if (entry) {
+      history.sendWithHistory(entry);
     }
-    const before = selectedShape;
-    const after = { ...before, ...patch, updatedAt: Date.now() } as Shape;
-    history.sendWithHistory({
-      forward: {
-        id: makeOperationId(),
-        kind: "update_shape",
-        shapeId: before.id,
-        patch: getChangedFields(before, after),
-      },
-      inverse: {
-        id: makeOperationId(),
-        kind: "update_shape",
-        shapeId: before.id,
-        patch: getChangedFields(after, before),
-      },
-    });
   }
 
   function updateCanvasBackground() {
@@ -131,11 +165,11 @@ export function useWhiteboardInteractions({
         patch: { backgroundColor: canvasState.backgroundColor ?? "#ffffff" },
       },
     });
-    setSelectedId(null);
+    setSelectedIds([]);
   }
 
   function fillShape(shape: Shape) {
-    if (shape.type === "line") {
+    if (shape.type === "line" || shape.groupId) {
       return;
     }
     const before = shape;
@@ -159,24 +193,74 @@ export function useWhiteboardInteractions({
         patch: getChangedFields(after, before),
       },
     });
-    setSelectedId(null);
+    setSelectedIds([]);
   }
 
   function deleteSelectedShape() {
-    if (!selectedShape) {
+    if (isGroupedSelection() || selectedShapes.length === 0) {
       return;
     }
+
     history.sendWithHistory({
-      forward: { id: makeOperationId(), kind: "delete_shape", shapeId: selectedShape.id },
-      inverse: { id: makeOperationId(), kind: "create_shape", shape: selectedShape },
+      forward: {
+        id: makeOperationId(),
+        kind: "batch",
+        ops: selectedShapes.map((shape) => ({
+          id: makeOperationId(),
+          kind: "delete_shape",
+          shapeId: shape.id,
+        })),
+      },
+      inverse: {
+        id: makeOperationId(),
+        kind: "batch",
+        ops: [...selectedShapes].reverse().map((shape) => ({
+          id: makeOperationId(),
+          kind: "create_shape",
+          shape,
+        })),
+      },
     });
-    setSelectedId(null);
+    setSelectedIds([]);
+  }
+
+  function groupSelection() {
+    const groupableShapes = selectedShapes.filter((shape) => !shape.groupId);
+    if (groupableShapes.length < 2) {
+      return;
+    }
+    const groupId = makeOperationId();
+    const after = groupableShapes.map(
+      (shape) => ({ ...shape, groupId, updatedAt: Date.now() }) as Shape,
+    );
+    const entry = buildBatchHistory(groupableShapes, after);
+    if (!entry) {
+      return;
+    }
+    history.sendWithHistory(entry);
+    setSelectedIds(groupableShapes.map((shape) => shape.id));
+  }
+
+  function ungroupSelection() {
+    if (!isGroupedSelection()) {
+      return;
+    }
+    const after = selectedShapes.map(
+      (shape) => ({ ...shape, groupId: null, updatedAt: Date.now() }) as Shape,
+    );
+    const entry = buildBatchHistory(selectedShapes, after);
+    if (!entry) {
+      return;
+    }
+    history.sendWithHistory(entry);
+    setSelectedIds(selectedShapes.map((shape) => shape.id));
   }
 
   function handleCanvasPointerDown(event: PointerEvent<SVGSVGElement>) {
     const point = pointerPoint(event);
     if (tool === "select") {
-      setSelectedId(null);
+      interaction.current = { mode: "box_select", start: point, current: point };
+      setSelectionBox(null);
       return;
     }
     if (tool === "bucket") {
@@ -215,16 +299,32 @@ export function useWhiteboardInteractions({
       fillShape(shape);
       return;
     }
-    setSelectedId(shape.id);
     if (tool !== "select") {
       return;
     }
-    interaction.current = {
-      mode: "move",
-      start: pointerPoint(event),
-      before: shape,
-      last: shape,
-    };
+
+    const idsForShape = shape.groupId ? getGroupShapeIds(shape.groupId) : [shape.id];
+    const isAlreadySelected = idsForShape.every((shapeId) => selectedIds.includes(shapeId));
+    setSelectedIds(isAlreadySelected ? selectedIds : idsForShape);
+
+    if (!shape.groupId) {
+      interaction.current = {
+        mode: "move",
+        start: pointerPoint(event),
+        before: shape,
+        last: shape,
+      };
+    }
+
+    if (shape.groupId) {
+      const groupShapes = canvasState.shapes.filter((item) => item.groupId === shape.groupId);
+      interaction.current = {
+        mode: "move_many",
+        start: pointerPoint(event),
+        before: groupShapes,
+        last: groupShapes,
+      };
+    }
   }
 
   function handleHandlePointerDown(
@@ -233,6 +333,9 @@ export function useWhiteboardInteractions({
     shape: Shape,
   ) {
     event.stopPropagation();
+    if (shape.groupId || selectedShapes.length !== 1) {
+      return;
+    }
     interaction.current = {
       mode: "resize",
       start: pointerPoint(event),
@@ -242,16 +345,39 @@ export function useWhiteboardInteractions({
     };
   }
 
+  function handleSelectionPointerDown(event: PointerEvent<SVGElement>) {
+    if (!isGroupedSelection()) {
+      return;
+    }
+    event.stopPropagation();
+    interaction.current = {
+      mode: "move_many",
+      start: pointerPoint(event),
+      before: selectedShapes,
+      last: selectedShapes,
+    };
+  }
+
   function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
     const point = pointerPoint(event);
-    sendCursor(point.x, point.y, selectedId);
+    sendCursor(point.x, point.y, selectedIds[0] ?? null);
     const current = interaction.current;
 
+    if (current.mode === "box_select") {
+      const box = boxFromPointer(current, point);
+      interaction.current = { ...current, current: point };
+      setSelectionBox(
+        box.width >= MIN_BOX_SELECT_SIZE || box.height >= MIN_BOX_SELECT_SIZE ? box : null,
+      );
+    }
     if (current.mode === "draw") {
       updateDraftShape(current, updateDraftFromPointer(current, point));
     }
     if (current.mode === "move") {
       moveSelectedShape(current, moveFromPointer(current, point));
+    }
+    if (current.mode === "move_many") {
+      moveSelectedShapes(current, moveManyFromPointer(current, point));
     }
     if (current.mode === "resize") {
       resizeSelectedShape(current, resizeFromPointer(current, point));
@@ -279,6 +405,18 @@ export function useWhiteboardInteractions({
     liveUpdates.sendLiveUpdate(next, current.before);
   }
 
+  function moveSelectedShapes(
+    current: Extract<Interaction, { mode: "move_many" }>,
+    next: Shape[],
+  ) {
+    const entry = buildBatchHistory(current.last, next);
+    interaction.current = { ...current, last: next };
+    if (entry) {
+      applyLocal(entry.forward);
+    }
+    liveUpdates.sendLiveUpdates(next, current.before);
+  }
+
   function resizeSelectedShape(current: Extract<Interaction, { mode: "resize" }>, next: Shape) {
     interaction.current = { ...current, last: next };
     applyLocal({
@@ -293,14 +431,42 @@ export function useWhiteboardInteractions({
   function handlePointerUp() {
     const current = interaction.current;
     interaction.current = defaultInteraction;
+    setSelectionBox(null);
     liveUpdates.cancelPendingLiveUpdate();
 
+    if (current.mode === "box_select") {
+      finishBoxSelect(current);
+    }
     if (current.mode === "draw") {
       finishDrawingShape(current);
     }
     if (current.mode === "move" || current.mode === "resize") {
       finishTransformingShape(current);
     }
+    if (current.mode === "move_many") {
+      finishTransformingShapes(current);
+    }
+  }
+
+  function finishBoxSelect(current: Extract<Interaction, { mode: "box_select" }>) {
+    const box = normalizeBounds(current.start, current.current);
+    if (box.width < MIN_BOX_SELECT_SIZE && box.height < MIN_BOX_SELECT_SIZE) {
+      setSelectedIds([]);
+      return;
+    }
+
+    const nextIds = new Set<string>();
+    for (const shape of canvasState.shapes) {
+      if (!boundsIntersect(box, getShapeBounds(shape))) {
+        continue;
+      }
+      if (shape.groupId) {
+        getGroupShapeIds(shape.groupId).forEach((shapeId) => nextIds.add(shapeId));
+      } else {
+        nextIds.add(shape.id);
+      }
+    }
+    setSelectedIds([...nextIds]);
   }
 
   function finishDrawingShape(current: Extract<Interaction, { mode: "draw" }>) {
@@ -323,12 +489,19 @@ export function useWhiteboardInteractions({
     history.pushHistory(entry);
   }
 
+  function finishTransformingShapes(current: Extract<Interaction, { mode: "move_many" }>) {
+    const entry = buildBatchHistory(current.before, current.last);
+    if (entry) {
+      history.pushHistory(entry);
+    }
+  }
+
   function handleTextDoubleClick(event: MouseEvent<SVGElement>, shape: Shape) {
-    if (shape.type !== "text") {
+    if (shape.type !== "text" || shape.groupId) {
       return;
     }
     event.stopPropagation();
-    setSelectedId(shape.id);
+    selectShape(shape);
     onStartTextEdit(shape);
   }
 
@@ -337,17 +510,21 @@ export function useWhiteboardInteractions({
     onDelete: deleteSelectedShape,
     onRedo: history.redo,
     onUndo: history.undo,
-    setSelectedId,
+    setSelectedIds,
   });
 
   return {
     deleteSelectedShape,
+    groupSelection,
     handleCanvasPointerDown,
     handleHandlePointerDown,
     handlePointerMove,
     handlePointerUp,
+    handleSelectionPointerDown,
     handleShapePointerDown,
     handleTextDoubleClick,
+    isGroupedSelection: isGroupedSelection(),
+    ungroupSelection,
     updateSelectedColor,
   };
 }

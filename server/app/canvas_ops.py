@@ -19,6 +19,11 @@ def apply_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]
     shapes = next_state["shapes"]
     kind = op.get("kind")
 
+    if kind == "batch":
+        for child_op in op.get("ops", []):
+            next_state = apply_operation(next_state, child_op)
+        return next_state
+
     if kind == "create_shape":
         shape = op.get("shape")
         if isinstance(shape, dict) and not any(s.get("id") == shape.get("id") for s in shapes):
@@ -40,7 +45,10 @@ def apply_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]
         if isinstance(patch, dict):
             for index, shape in enumerate(shapes):
                 if shape.get("id") == shape_id:
-                    shapes[index] = {**shape, **patch}
+                    next_shape = {**shape, **patch}
+                    if next_shape.get("groupId") is None:
+                        next_shape.pop("groupId", None)
+                    shapes[index] = next_shape
                     break
         return next_state
 
@@ -69,6 +77,20 @@ def invert_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any
     current_state = normalize_state(state)
     shapes = current_state["shapes"]
     kind = op.get("kind")
+
+    if kind == "batch":
+        ops = op.get("ops")
+        if not isinstance(ops, list):
+            return None
+        state_cursor = deepcopy(current_state)
+        inverses: list[dict[str, Any]] = []
+        for child_op in ops:
+            inverse = invert_operation(state_cursor, child_op)
+            if inverse is None:
+                return None
+            inverses.insert(0, inverse)
+            state_cursor = apply_operation(state_cursor, child_op)
+        return {"id": str(uuid4()), "kind": "batch", "ops": inverses}
 
     if kind == "create_shape":
         shape = op.get("shape")
@@ -105,9 +127,8 @@ def invert_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any
         if not isinstance(patch, dict):
             return None
         inverse_patch = {
-            key: current_shape[key]
+            key: current_shape.get(key)
             for key in patch
-            if key in current_shape
         }
         return {
             "id": str(uuid4()),

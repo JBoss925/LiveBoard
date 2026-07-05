@@ -122,6 +122,7 @@ Current state example:
     {
       "id": "shape-id",
       "type": "rect",
+      "groupId": "optional-group-id",
       "x": 100,
       "y": 120,
       "width": 240,
@@ -137,6 +138,8 @@ Current state example:
   ]
 }
 ```
+
+`groupId` is optional. When present, every shape with the same `groupId` belongs to one locked frontend group. Clearing a group stores an `update_shape` patch with `"groupId": null`; operation application removes the field from the shape.
 
 Text shapes add:
 
@@ -184,7 +187,7 @@ New durable edits delete redo rows for that canvas.
 
 Revision increments for:
 
-- durable create/update/delete/reorder operation
+- durable create/update/delete/reorder/batch operation
 - undo
 - redo
 
