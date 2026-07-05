@@ -12,6 +12,7 @@ import { ShapeRenderer } from "./ShapeRenderer";
 
 type CanvasSvgProps = {
   canvasState: CanvasState;
+  className?: string;
   remoteCursors: RemoteCursor[];
   selectedShapes: Shape[];
   selectionBox: Bounds | null;
@@ -37,6 +38,7 @@ type CanvasSvgProps = {
 
 export function CanvasSvg({
   canvasState,
+  className = "",
   remoteCursors,
   selectedShapes,
   selectionBox,
@@ -58,7 +60,7 @@ export function CanvasSvg({
   return (
     <svg
       ref={svgRef}
-      className="whiteboard-canvas"
+      className={`whiteboard-canvas ${className}`}
       viewBox={viewBox}
       onPointerDown={onCanvasPointerDown}
       onPointerMove={onPointerMove}

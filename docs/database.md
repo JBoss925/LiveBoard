@@ -153,6 +153,7 @@ Current state example:
       "id": "shape-id",
       "type": "rect",
       "groupId": "optional-group-id",
+      "groupIds": ["optional-child-group-id", "optional-parent-group-id"],
       "x": 100,
       "y": 120,
       "width": 240,
@@ -169,7 +170,7 @@ Current state example:
 }
 ```
 
-`groupId` is optional. When present, every shape with the same `groupId` belongs to one locked frontend group. Clearing a group stores an `update_shape` patch with `"groupId": null`; operation application removes the field from the shape.
+`groupIds` is optional and stores nested grouping as an ordered stack. The final entry is the active/top group used for selection and movement. `groupId` is also optional and remains as a compatibility field for flat group data; new nested groups keep it equal to the first stack entry. Clearing a group level stores an `update_shape` patch that updates `groupIds`; when the stack becomes empty the patch sets `"groupIds": null` and `"groupId": null`, and operation application removes both fields from the shape.
 
 Text shapes add:
 

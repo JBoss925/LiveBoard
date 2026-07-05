@@ -116,7 +116,7 @@
 ## Select, Move, Or Resize Shapes
 
 1. With the select tool active, user left-drags on the canvas background to draw a selection rectangle.
-2. Pointer up selects every intersecting unlocked shape. If any grouped shape intersects, all shapes with that `groupId` are selected together.
+2. Pointer up selects every intersecting unlocked shape. If any grouped shape intersects, all shapes in that shape's active/top group are selected together.
 3. A single unlocked selected shape shows resize handles. Pointer down on a handle starts resize.
 4. Background left-drag is reserved for box selection; left-dragging an unlocked shape moves that shape.
 5. A selected group can be dragged as a unit by pointer down on one of its grouped shapes or on empty space inside the combined group bounding box.
@@ -164,13 +164,14 @@
 
 ## Group Or Ungroup Shapes
 
-1. User box-selects two or more unlocked shapes.
+1. User box-selects two or more selection units. A unit can be one unlocked shape or one already grouped object.
 2. User right-clicks one selected shape, or empty space inside the combined selection bounds, and chooses Group.
-3. Frontend sends one undoable `batch` operation that sets the same `groupId` on every selected shape.
+3. Frontend sends one undoable `batch` operation that appends a new parent id to each selected shape's `groupIds` stack. Existing child groups keep their earlier stack entries, so groups can be nested.
 4. The group shows one combined bounding box. Individual members cannot be selected, resized, text-edited, bucket-filled, or styled while grouped.
 5. User can drag a selected group as one unit from any grouped shape or from empty space inside the combined group bounding box.
 6. User right-clicks the selected group and chooses Ungroup.
-7. Frontend sends one undoable `batch` operation that clears `groupId` from every member.
+7. Frontend sends one undoable `batch` operation that removes only the active/top id from each selected shape's `groupIds` stack. Any child group underneath remains grouped.
+8. If undo/redo regroups shapes while only one former member is selected, frontend clears that partial grouped selection so the member cannot be moved independently.
 
 ## Undo And Redo
 

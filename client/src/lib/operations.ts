@@ -39,6 +39,9 @@ function applyShapePatch(shape: Shape, patch: Partial<Shape>): Shape {
   if (next.groupId === null) {
     delete next.groupId;
   }
+  if (next.groupIds === null) {
+    delete next.groupIds;
+  }
   return next;
 }
 

@@ -24,6 +24,7 @@ import { useCanvasSocket } from "../hooks/useCanvasSocket";
 import { useLiveShapeUpdates } from "../hooks/useLiveShapeUpdates";
 import { useWhiteboardInteractions } from "../hooks/useWhiteboardInteractions";
 import { getChangedFields, type Bounds } from "../lib/geometry";
+import { getTopGroupId } from "../lib/groups";
 import { findShape, makeOperationId } from "../lib/operations";
 import type { Shape, TextShape, Tool, User } from "../types";
 import { ShareModal } from "./ShareModal";
@@ -114,16 +115,47 @@ function shapesForIds(shapeIds: string[], shapes: Shape[]): Shape[] {
 }
 
 function canGroupSelection(shapeIds: string[], shapes: Shape[]): boolean {
-  return shapesForIds(shapeIds, shapes).filter((shape) => !shape.groupId).length > 1;
+  const units = new Set(
+    shapesForIds(shapeIds, shapes).map((shape) => getTopGroupId(shape) ?? shape.id),
+  );
+  return units.size > 1;
 }
 
 function canUngroupSelection(shapeIds: string[], shapes: Shape[]): boolean {
   const selectedShapes = shapesForIds(shapeIds, shapes);
+  const groupId = selectedShapes[0] ? getTopGroupId(selectedShapes[0]) : null;
   return Boolean(
     selectedShapes.length > 0 &&
-      selectedShapes[0].groupId &&
-      selectedShapes.every((shape) => shape.groupId === selectedShapes[0].groupId),
+      groupId &&
+      selectedShapes.every((shape) => getTopGroupId(shape) === groupId),
   );
+}
+
+function reconcileSelection(shapeIds: string[], shapes: Shape[]): string[] {
+  const byId = new Map(shapes.map((shape) => [shape.id, shape]));
+  const currentIds = new Set(shapeIds);
+  const nextIds = new Set<string>();
+
+  for (const shapeId of shapeIds) {
+    const shape = byId.get(shapeId);
+    if (!shape) {
+      continue;
+    }
+    const groupId = getTopGroupId(shape);
+    if (!groupId) {
+      nextIds.add(shape.id);
+      continue;
+    }
+
+    const groupIds = shapes
+      .filter((candidate) => getTopGroupId(candidate) === groupId)
+      .map((candidate) => candidate.id);
+    if (groupIds.every((groupId) => currentIds.has(groupId))) {
+      groupIds.forEach((groupId) => nextIds.add(groupId));
+    }
+  }
+
+  return [...nextIds];
 }
 
 export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
@@ -159,6 +191,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [textEdit, setTextEdit] = useState<TextEditState | null>(null);
+  const [isPanning, setIsPanning] = useState(false);
   const [viewport, setViewport] = useState<CanvasViewport>({
     centerX: 0,
     centerY: 0,
@@ -182,10 +215,11 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     [socket.state, selectedIds],
   );
   const selectedShape = selectedShapes.length === 1 ? selectedShapes[0] : null;
+  const selectedTopGroupId = selectedShapes[0] ? getTopGroupId(selectedShapes[0]) : null;
   const isGroupedSelection = Boolean(
     selectedShapes.length > 0 &&
-      selectedShapes[0].groupId &&
-      selectedShapes.every((shape) => shape.groupId === selectedShapes[0].groupId),
+      selectedTopGroupId &&
+      selectedShapes.every((shape) => getTopGroupId(shape) === selectedTopGroupId),
   );
   const sharedSelectionValues = useMemo(
     () => getSharedSelectionValues(selectedShapes),
@@ -284,6 +318,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   function startCanvasPan(event: PointerEvent<SVGElement>) {
     event.preventDefault();
     svgRef.current?.setPointerCapture(event.pointerId);
+    setIsPanning(true);
     panRef.current = {
       startClientX: event.clientX,
       startClientY: event.clientY,
@@ -321,6 +356,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   function handleCanvasPointerUp() {
     if (panRef.current) {
       panRef.current = null;
+      setIsPanning(false);
       return;
     }
     interactions.handlePointerUp();
@@ -364,9 +400,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }
 
   useEffect(() => {
-    setSelectedIds((current) =>
-      current.filter((shapeId) => socket.state.shapes.some((shape) => shape.id === shapeId)),
-    );
+    setSelectedIds((current) => reconcileSelection(current, socket.state.shapes));
   }, [socket.state.shapes]);
 
   useEffect(() => {
@@ -415,11 +449,12 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   function handleShapeContextMenu(event: MouseEvent<SVGElement>, shape: Shape) {
     event.preventDefault();
     event.stopPropagation();
+    const groupId = getTopGroupId(shape);
     const nextSelectedIds = selectedIds.includes(shape.id)
       ? selectedIds
-      : shape.groupId
+      : groupId
         ? socket.state.shapes
-            .filter((item) => item.groupId === shape.groupId)
+            .filter((item) => getTopGroupId(item) === groupId)
             .map((item) => item.id)
         : [shape.id];
     if (!selectedIds.includes(shape.id)) {
@@ -650,6 +685,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
             ) : null}
             <CanvasSvg
               canvasState={socket.state}
+              className={isPanning ? "is-panning" : ""}
               remoteCursors={socket.remoteCursors}
               selectedShapes={selectedShapes}
               selectionBox={selectionBox}

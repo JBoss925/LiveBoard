@@ -9,6 +9,7 @@ import {
   type Point,
 } from "../lib/geometry";
 import { applyOperation, makeOperationId } from "../lib/operations";
+import { addTopGroup, getTopGroupId, isGroupedShape, removeTopGroup } from "../lib/groups";
 import { createBaseShape } from "../lib/shapeFactory";
 import {
   boxFromPointer,
@@ -104,20 +105,26 @@ export function useWhiteboardInteractions({
   }
 
   function selectShape(shape: Shape) {
-    setSelectedIds(shape.groupId ? getGroupShapeIds(shape.groupId) : [shape.id]);
+    const groupId = getTopGroupId(shape);
+    setSelectedIds(groupId ? getGroupShapeIds(groupId) : [shape.id]);
   }
 
   function getGroupShapeIds(groupId: string): string[] {
     return canvasState.shapes
-      .filter((shape) => shape.groupId === groupId)
+      .filter((shape) => getTopGroupId(shape) === groupId)
       .map((shape) => shape.id);
   }
 
+  function selectedGroupUnits(shapes: Shape[]): Set<string> {
+    return new Set(shapes.map((shape) => getTopGroupId(shape) ?? shape.id));
+  }
+
   function isGroupedSelection(): boolean {
+    const groupId = selectedShapes[0] ? getTopGroupId(selectedShapes[0]) : null;
     return Boolean(
       selectedShapes.length > 0 &&
-        selectedShapes[0].groupId &&
-        selectedShapes.every((shape) => shape.groupId === selectedShapes[0].groupId),
+        groupId &&
+        selectedShapes.every((shape) => getTopGroupId(shape) === groupId),
     );
   }
 
@@ -169,7 +176,7 @@ export function useWhiteboardInteractions({
   }
 
   function fillShape(shape: Shape) {
-    if (shape.type === "line" || shape.groupId) {
+    if (shape.type === "line" || isGroupedShape(shape)) {
       return;
     }
     const before = shape;
@@ -231,13 +238,13 @@ export function useWhiteboardInteractions({
   }
 
   function groupSelection(shapeIds = selectedIds) {
-    const groupableShapes = shapesForIds(shapeIds).filter((shape) => !shape.groupId);
-    if (groupableShapes.length < 2) {
+    const groupableShapes = shapesForIds(shapeIds);
+    if (selectedGroupUnits(groupableShapes).size < 2) {
       return;
     }
     const groupId = makeOperationId();
     const after = groupableShapes.map(
-      (shape) => ({ ...shape, groupId, updatedAt: Date.now() }) as Shape,
+      (shape) => ({ ...addTopGroup(shape, groupId), updatedAt: Date.now() }) as Shape,
     );
     const entry = buildBatchHistory(groupableShapes, after);
     if (!entry) {
@@ -249,12 +256,12 @@ export function useWhiteboardInteractions({
 
   function ungroupSelection(shapeIds = selectedIds) {
     const shapes = shapesForIds(shapeIds);
-    const groupId = shapes[0]?.groupId;
-    if (!groupId || !shapes.every((shape) => shape.groupId === groupId)) {
+    const groupId = shapes[0] ? getTopGroupId(shapes[0]) : null;
+    if (!groupId || !shapes.every((shape) => getTopGroupId(shape) === groupId)) {
       return;
     }
     const after = shapes.map(
-      (shape) => ({ ...shape, groupId: null, updatedAt: Date.now() }) as Shape,
+      (shape) => ({ ...removeTopGroup(shape), updatedAt: Date.now() }) as Shape,
     );
     const entry = buildBatchHistory(shapes, after);
     if (!entry) {
@@ -317,11 +324,12 @@ export function useWhiteboardInteractions({
       return;
     }
 
-    const idsForShape = shape.groupId ? getGroupShapeIds(shape.groupId) : [shape.id];
+    const groupId = getTopGroupId(shape);
+    const idsForShape = groupId ? getGroupShapeIds(groupId) : [shape.id];
     const isAlreadySelected = idsForShape.every((shapeId) => selectedIds.includes(shapeId));
     setSelectedIds(isAlreadySelected ? selectedIds : idsForShape);
 
-    if (!shape.groupId) {
+    if (!groupId) {
       interaction.current = {
         mode: "move",
         start: pointerPoint(event),
@@ -330,8 +338,8 @@ export function useWhiteboardInteractions({
       };
     }
 
-    if (shape.groupId) {
-      const groupShapes = canvasState.shapes.filter((item) => item.groupId === shape.groupId);
+    if (groupId) {
+      const groupShapes = canvasState.shapes.filter((item) => getTopGroupId(item) === groupId);
       interaction.current = {
         mode: "move_many",
         start: pointerPoint(event),
@@ -347,7 +355,7 @@ export function useWhiteboardInteractions({
     shape: Shape,
   ) {
     event.stopPropagation();
-    if (shape.groupId || selectedShapes.length !== 1) {
+    if (isGroupedShape(shape) || selectedShapes.length !== 1) {
       return;
     }
     interaction.current = {
@@ -477,8 +485,9 @@ export function useWhiteboardInteractions({
       if (!boundsIntersect(box, getShapeBounds(shape))) {
         continue;
       }
-      if (shape.groupId) {
-        getGroupShapeIds(shape.groupId).forEach((shapeId) => nextIds.add(shapeId));
+      const groupId = getTopGroupId(shape);
+      if (groupId) {
+        getGroupShapeIds(groupId).forEach((shapeId) => nextIds.add(shapeId));
       } else {
         nextIds.add(shape.id);
       }
@@ -514,7 +523,7 @@ export function useWhiteboardInteractions({
   }
 
   function handleTextDoubleClick(event: MouseEvent<SVGElement>, shape: Shape) {
-    if (shape.type !== "text" || shape.groupId) {
+    if (shape.type !== "text" || isGroupedShape(shape)) {
       return;
     }
     event.stopPropagation();

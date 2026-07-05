@@ -143,4 +143,4 @@ Frontend `api.ts` formats string, object, and Pydantic validation-array details 
 
 `validation.py` accepts `create_shape`, `update_canvas`, `update_shape`, `delete_shape`, `reorder_shape`, and non-nested `batch` operations. `batch` operations may contain up to 100 child operations and are used for one user action that touches multiple shapes.
 
-Shape patches may include optional `groupId`. A string `groupId` groups shapes together on the frontend; `groupId: null` removes the field during operation application. `canvas_ops.py` applies batch children in order and derives inverse batch operations from the locked authoritative canvas state.
+Shape patches may include optional `groupId` and `groupIds`. `groupIds` is the ordered nesting stack for shape groups, with the last id treated as the active/top group. `groupId` is retained as a compatibility field for older flat groups and stores the first group id in the stack. Setting either field to `null` removes that field during operation application. `canvas_ops.py` applies batch children in order and derives inverse batch operations from the locked authoritative canvas state.

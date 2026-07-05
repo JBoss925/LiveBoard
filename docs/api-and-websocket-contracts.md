@@ -248,7 +248,7 @@ type CanvasOperation =
   | { id: string; kind: "reorder_shape"; shapeId: string; toIndex: number };
 ```
 
-Shape objects may include optional `groupId: string`. Shapes with the same `groupId` are treated as one locked group by the frontend. `update_shape` can set `groupId` to a string to group a shape or to `null` to remove it from a group.
+Shape objects may include optional `groupId: string` and `groupIds: string[]`. `groupIds` is the ordered nesting stack for groups; the frontend treats the last id in the array as the active/top group. `groupId` remains supported for flat legacy shapes and mirrors the first id in the stack. `update_shape` can set `groupIds` to append or remove a nesting level, and can set `groupId` or `groupIds` to `null` to remove those fields.
 
 `batch` applies child operations in order and is used when one user action must affect multiple shapes as one undoable operation. Nested `batch` operations are rejected.
 

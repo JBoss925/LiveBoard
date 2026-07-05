@@ -48,6 +48,8 @@ def apply_operation(state: dict[str, Any], op: dict[str, Any]) -> dict[str, Any]
                     next_shape = {**shape, **patch}
                     if next_shape.get("groupId") is None:
                         next_shape.pop("groupId", None)
+                    if next_shape.get("groupIds") is None:
+                        next_shape.pop("groupIds", None)
                     shapes[index] = next_shape
                     break
         return next_state

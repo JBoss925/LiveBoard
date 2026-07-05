@@ -16,6 +16,7 @@ COMMON_FIELDS = {
     "id",
     "type",
     "groupId",
+    "groupIds",
     "strokeColor",
     "fillColor",
     "strokeOpacity",
@@ -168,6 +169,15 @@ def validate_common_style(value: dict[str, Any], partial: bool = False) -> None:
             raise ValueError("Invalid group id")
         if isinstance(value["groupId"], str) and len(value["groupId"]) > 80:
             raise ValueError("Invalid group id")
+    if "groupIds" in value:
+        group_ids = value["groupIds"]
+        if group_ids is None:
+            return
+        if not isinstance(group_ids, list) or len(group_ids) > 12:
+            raise ValueError("Invalid group id stack")
+        for group_id in group_ids:
+            if not isinstance(group_id, str) or not group_id or len(group_id) > 80:
+                raise ValueError("Invalid group id stack")
 
 
 def validate_rect_like(value: dict[str, Any], partial: bool = False) -> None:

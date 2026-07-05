@@ -9,6 +9,7 @@ export type BaseShape = {
   id: string;
   type: ShapeType;
   groupId?: string | null;
+  groupIds?: string[] | null;
   strokeColor: string;
   fillColor: string;
   strokeOpacity: number;

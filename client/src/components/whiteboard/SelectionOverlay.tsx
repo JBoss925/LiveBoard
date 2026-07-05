@@ -1,5 +1,6 @@
 import type { MouseEvent, PointerEvent } from "react";
 import { getCombinedBounds, getShapeBounds } from "../../lib/geometry";
+import { isGroupedShape } from "../../lib/groups";
 import type { ResizeHandle, Shape } from "../../types";
 
 type SelectionOverlayProps = {
@@ -24,7 +25,7 @@ export function SelectionOverlay({
     return null;
   }
 
-  const isSingleUnlockedShape = shapes.length === 1 && !shape.groupId;
+  const isSingleUnlockedShape = shapes.length === 1 && !isGroupedShape(shape);
   if (!isSingleUnlockedShape) {
     const bounds = getCombinedBounds(shapes);
     if (!bounds) {
