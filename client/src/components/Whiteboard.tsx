@@ -24,7 +24,7 @@ import { useCanvasSocket } from "../hooks/useCanvasSocket";
 import { useLiveShapeUpdates } from "../hooks/useLiveShapeUpdates";
 import { useWhiteboardInteractions } from "../hooks/useWhiteboardInteractions";
 import { getChangedFields, type Bounds } from "../lib/geometry";
-import { getTopGroupId } from "../lib/groups";
+import { getTopGroupId, isGroupedShape } from "../lib/groups";
 import { findShape, makeOperationId } from "../lib/operations";
 import type { Shape, TextShape, Tool, User } from "../types";
 import { ShareModal } from "./ShareModal";
@@ -133,7 +133,6 @@ function canUngroupSelection(shapeIds: string[], shapes: Shape[]): boolean {
 
 function reconcileSelection(shapeIds: string[], shapes: Shape[]): string[] {
   const byId = new Map(shapes.map((shape) => [shape.id, shape]));
-  const currentIds = new Set(shapeIds);
   const nextIds = new Set<string>();
 
   for (const shapeId of shapeIds) {
@@ -147,12 +146,9 @@ function reconcileSelection(shapeIds: string[], shapes: Shape[]): string[] {
       continue;
     }
 
-    const groupIds = shapes
+    shapes
       .filter((candidate) => getTopGroupId(candidate) === groupId)
-      .map((candidate) => candidate.id);
-    if (groupIds.every((groupId) => currentIds.has(groupId))) {
-      groupIds.forEach((groupId) => nextIds.add(groupId));
-    }
+      .forEach((candidate) => nextIds.add(candidate.id));
   }
 
   return [...nextIds];
@@ -404,7 +400,17 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }, [socket.state.shapes]);
 
   useEffect(() => {
-    if (selectedShapes.length === 0 || isGroupedSelection) {
+    if (!textEdit) {
+      return;
+    }
+    const shape = findShape(socket.state, textEdit.shapeId);
+    if (!shape || shape.type !== "text" || isGroupedShape(shape)) {
+      setTextEdit(null);
+    }
+  }, [socket.state.shapes, textEdit]);
+
+  useEffect(() => {
+    if (selectedShapes.length === 0 || selectedShapes.some(isGroupedShape)) {
       return;
     }
     if (sharedSelectionValues.strokeColor) {
@@ -519,7 +525,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }
 
   function startTextEdit(shape: Shape) {
-    if (shape.type !== "text") {
+    if (shape.type !== "text" || isGroupedShape(shape)) {
       return;
     }
     committedTextEditId.current = null;
@@ -537,7 +543,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     committedTextEditId.current = edit.shapeId;
     const shape = findShape(socket.state, edit.shapeId);
     setTextEdit(null);
-    if (!shape || shape.type !== "text" || shape.text === edit.value) {
+    if (!shape || shape.type !== "text" || isGroupedShape(shape) || shape.text === edit.value) {
       return;
     }
 
@@ -559,7 +565,8 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }
 
   const hasSelection = selectedShapes.length > 0;
-  const canEditSelection = hasSelection && !isGroupedSelection;
+  const selectionContainsGroupedShape = selectedShapes.some(isGroupedShape);
+  const canEditSelection = hasSelection && !selectionContainsGroupedShape;
   const selectionHasFill = canEditSelection && selectedShapes.some((shape) => shape.type !== "line");
   const selectionIsOnlyText =
     canEditSelection &&

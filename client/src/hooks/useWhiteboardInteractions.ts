@@ -129,7 +129,7 @@ export function useWhiteboardInteractions({
   }
 
   function editableSelection(): Shape[] {
-    return isGroupedSelection() ? [] : selectedShapes;
+    return selectedShapes.some(isGroupedShape) ? [] : selectedShapes;
   }
 
   function buildSelectionUpdate(patch: Partial<Shape>): HistoryEntry | null {
@@ -204,7 +204,7 @@ export function useWhiteboardInteractions({
   }
 
   function deleteSelectedShape() {
-    if (isGroupedSelection() || selectedShapes.length === 0) {
+    if (selectedShapes.length === 0 || selectedShapes.some(isGroupedShape)) {
       return;
     }
 

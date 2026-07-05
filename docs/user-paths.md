@@ -168,10 +168,11 @@
 2. User right-clicks one selected shape, or empty space inside the combined selection bounds, and chooses Group.
 3. Frontend sends one undoable `batch` operation that appends a new parent id to each selected shape's `groupIds` stack. Existing child groups keep their earlier stack entries, so groups can be nested.
 4. The group shows one combined bounding box. Individual members cannot be selected, resized, text-edited, bucket-filled, or styled while grouped.
-5. User can drag a selected group as one unit from any grouped shape or from empty space inside the combined group bounding box.
-6. User right-clicks the selected group and chooses Ungroup.
-7. Frontend sends one undoable `batch` operation that removes only the active/top id from each selected shape's `groupIds` stack. Any child group underneath remains grouped.
-8. If undo/redo regroups shapes while only one former member is selected, frontend clears that partial grouped selection so the member cannot be moved independently.
+5. After grouping, selection resolves to the new top group. The same reconciliation runs after remote operations and undo/redo, so a shape another editor just grouped cannot remain selected as an editable child.
+6. User can drag a selected group as one unit from any grouped shape or from empty space inside the combined group bounding box.
+7. User right-clicks the selected group and chooses Ungroup.
+8. Frontend sends one undoable `batch` operation that removes only the active/top id from each selected shape's `groupIds` stack. Any child group underneath remains grouped.
+9. Mixed selections that include a grouped unit can be used to create a parent group, but grouped members remain locked from style, text, bucket, resize, and delete operations.
 
 ## Undo And Redo
 
