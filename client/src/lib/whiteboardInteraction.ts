@@ -3,7 +3,9 @@ import {
   getShapeBounds,
   normalizeBounds,
   moveShape,
+  resizeBounds,
   resizeShape,
+  scaleShapeToBounds,
   type Point,
   type Bounds,
 } from "./geometry";
@@ -16,7 +18,15 @@ export type Interaction =
   | { mode: "draw"; tool: Exclude<ShapeType, "text">; start: Point; draft: Shape }
   | { mode: "move"; start: Point; before: Shape; last: Shape }
   | { mode: "move_many"; start: Point; before: Shape[]; last: Shape[] }
-  | { mode: "resize"; start: Point; handle: ResizeHandle; before: Shape; last: Shape };
+  | { mode: "resize"; start: Point; handle: ResizeHandle; before: Shape; last: Shape }
+  | {
+      mode: "resize_many";
+      start: Point;
+      handle: ResizeHandle;
+      before: Shape[];
+      beforeBounds: Bounds;
+      last: Shape[];
+    };
 
 export const defaultInteraction: Interaction = { mode: "idle" };
 
@@ -78,6 +88,21 @@ export function resizeFromPointer(
     current.before,
     point.x - current.start.x,
     point.y - current.start.y,
+  );
+}
+
+export function resizeManyFromPointer(
+  current: Extract<Interaction, { mode: "resize_many" }>,
+  point: Point,
+): Shape[] {
+  const nextBounds = resizeBounds(
+    current.beforeBounds,
+    current.handle,
+    point.x - current.start.x,
+    point.y - current.start.y,
+  );
+  return current.before.map((shape) =>
+    scaleShapeToBounds(shape, current.beforeBounds, nextBounds),
   );
 }
 

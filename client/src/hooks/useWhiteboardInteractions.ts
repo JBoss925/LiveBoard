@@ -2,6 +2,7 @@ import { MouseEvent, PointerEvent, RefObject, useRef } from "react";
 import {
   boundsIntersect,
   getChangedFields,
+  getCombinedBounds,
   getShapeBounds,
   getSvgPoint,
   normalizeBounds,
@@ -19,6 +20,7 @@ import {
   isMeaningfulDraft,
   moveFromPointer,
   moveManyFromPointer,
+  resizeManyFromPointer,
   resizeFromPointer,
   updateDraftFromPointer,
   type Interaction,
@@ -329,6 +331,16 @@ export function useWhiteboardInteractions({
     const isAlreadySelected = idsForShape.every((shapeId) => selectedIds.includes(shapeId));
     setSelectedIds(isAlreadySelected ? selectedIds : idsForShape);
 
+    if (isAlreadySelected && selectedShapes.length > 1) {
+      interaction.current = {
+        mode: "move_many",
+        start: pointerPoint(event),
+        before: selectedShapes,
+        last: selectedShapes,
+      };
+      return;
+    }
+
     if (!groupId) {
       interaction.current = {
         mode: "move",
@@ -355,9 +367,23 @@ export function useWhiteboardInteractions({
     shape: Shape,
   ) {
     event.stopPropagation();
+    const combinedBounds = selectedShapes.length > 1 ? getCombinedBounds(selectedShapes) : null;
+    if (combinedBounds) {
+      interaction.current = {
+        mode: "resize_many",
+        start: pointerPoint(event),
+        handle,
+        before: selectedShapes,
+        beforeBounds: combinedBounds,
+        last: selectedShapes,
+      };
+      return;
+    }
+
     if (isGroupedShape(shape) || selectedShapes.length !== 1) {
       return;
     }
+
     interaction.current = {
       mode: "resize",
       start: pointerPoint(event),
@@ -372,7 +398,7 @@ export function useWhiteboardInteractions({
     if (event.button !== 0) {
       return;
     }
-    if (!isGroupedSelection()) {
+    if (selectedShapes.length < 2) {
       return;
     }
     interaction.current = {
@@ -407,6 +433,9 @@ export function useWhiteboardInteractions({
     if (current.mode === "resize") {
       resizeSelectedShape(current, resizeFromPointer(current, point));
     }
+    if (current.mode === "resize_many") {
+      transformSelectedShapes(current, resizeManyFromPointer(current, point));
+    }
   }
 
   function updateDraftShape(current: Extract<Interaction, { mode: "draw" }>, draft: Shape) {
@@ -432,6 +461,13 @@ export function useWhiteboardInteractions({
 
   function moveSelectedShapes(
     current: Extract<Interaction, { mode: "move_many" }>,
+    next: Shape[],
+  ) {
+    transformSelectedShapes(current, next);
+  }
+
+  function transformSelectedShapes(
+    current: Extract<Interaction, { mode: "move_many" | "resize_many" }>,
     next: Shape[],
   ) {
     const entry = buildBatchHistory(current.last, next);
@@ -469,6 +505,9 @@ export function useWhiteboardInteractions({
       finishTransformingShape(current);
     }
     if (current.mode === "move_many") {
+      finishTransformingShapes(current);
+    }
+    if (current.mode === "resize_many") {
       finishTransformingShapes(current);
     }
   }
@@ -515,7 +554,9 @@ export function useWhiteboardInteractions({
     history.pushHistory(entry);
   }
 
-  function finishTransformingShapes(current: Extract<Interaction, { mode: "move_many" }>) {
+  function finishTransformingShapes(
+    current: Extract<Interaction, { mode: "move_many" | "resize_many" }>,
+  ) {
     const entry = buildBatchHistory(current.before, current.last);
     if (entry) {
       history.pushHistory(entry);

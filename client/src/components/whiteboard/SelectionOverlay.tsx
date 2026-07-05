@@ -31,6 +31,13 @@ export function SelectionOverlay({
     if (!bounds) {
       return null;
     }
+    const handles: Array<[ResizeHandle, number, number]> = [
+      ["nw", bounds.x, bounds.y],
+      ["ne", bounds.x + bounds.width, bounds.y],
+      ["sw", bounds.x, bounds.y + bounds.height],
+      ["se", bounds.x + bounds.width, bounds.y + bounds.height],
+    ];
+
     return (
       <g className="selection selection-combined">
         <rect
@@ -42,6 +49,15 @@ export function SelectionOverlay({
           onContextMenu={onSelectionContextMenu}
           onPointerDown={onSelectionPointerDown}
         />
+        {handles.map(([handle, x, y]) => (
+          <circle
+            key={handle}
+            cx={x}
+            cy={y}
+            r="7"
+            onPointerDown={(event) => onHandlePointerDown(event, handle, shape)}
+          />
+        ))}
       </g>
     );
   }
