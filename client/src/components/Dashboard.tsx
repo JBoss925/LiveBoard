@@ -1,5 +1,6 @@
 import {
   type DragEvent,
+  type CSSProperties,
   type MouseEvent,
   type ReactNode,
   useCallback,
@@ -23,7 +24,13 @@ import {
 } from "lucide-react";
 import * as api from "../api";
 import type { CanvasFolder, CanvasSummary, User } from "../types";
-import { CanvasList, CanvasListLoading, CanvasRow } from "./CanvasList";
+import {
+  CanvasList,
+  CanvasListLoading,
+  CanvasRow,
+  TreeRails,
+  type TreeRailType,
+} from "./CanvasList";
 import { ConfirmModal } from "./ConfirmModal";
 import { FolderModal } from "./FolderModal";
 import { RenameCanvasModal } from "./RenameCanvasModal";
@@ -1147,6 +1154,7 @@ export function Dashboard({ user, onLogout, onOpenCanvas }: DashboardProps) {
 }
 
 type FolderTreeProps = {
+  ancestorRails?: boolean[];
   collapsedFolderIds: Set<string>;
   currentUserId: string;
   itemsForParent: (parentId: string | null) => DashboardListItem[];
@@ -1169,6 +1177,7 @@ type FolderTreeProps = {
 };
 
 function FolderTree({
+  ancestorRails = [],
   collapsedFolderIds,
   currentUserId,
   itemsForParent,
@@ -1187,7 +1196,15 @@ function FolderTree({
 }: FolderTreeProps) {
   return (
     <>
-      {itemsForParent(parentId).map((item, index) => {
+      {itemsForParent(parentId).map((item, index, siblingItems) => {
+        const isLastSibling = index === siblingItems.length - 1;
+        const railTypes: TreeRailType[] =
+          level > 0
+            ? [
+                ...ancestorRails.map((continues) => (continues ? "straight" : "none")),
+                isLastSibling ? "elbow" : "tee",
+              ]
+            : [];
         if (item.type === "canvas") {
           return (
             <DashboardItemFrame
@@ -1199,8 +1216,10 @@ function FolderTree({
               <CanvasRow
                 canvas={item.canvas}
                 currentUserId={currentUserId}
+                isLastSibling={isLastSibling}
                 nested={level > 0}
                 nestingLevel={level}
+                railTypes={railTypes}
                 selected={selectedIds.has(item.id)}
                 onContextMenu={onCanvasContextMenu}
                 onDragStart={onCanvasDragStart}
@@ -1217,6 +1236,14 @@ function FolderTree({
         const collapsed = collapsedFolderIds.has(folder.id);
         const childCount = itemsForParent(folder.id).length;
         const ToggleIcon = collapsed ? ChevronRight : ChevronDown;
+        const folderIndentWidth = level * 24;
+        const folderContentStart = 14 + folderIndentWidth;
+        const folderTreeStyle =
+          level > 0
+            ? ({
+                paddingLeft: folderContentStart,
+              } as CSSProperties)
+            : undefined;
         return (
           <DashboardItemFrame
             key={folder.id}
@@ -1226,7 +1253,9 @@ function FolderTree({
           >
             <div className="folder-list-group">
               <div
-                className="folder-row"
+                className={`folder-row ${level > 0 ? "nested tree-row" : ""} ${
+                  level > 0 && isLastSibling ? "tree-row-last" : ""
+                }`}
                 draggable
                 onContextMenu={(event) => onFolderContextMenu(folder, event)}
                 onDragOver={(event) => {
@@ -1235,8 +1264,11 @@ function FolderTree({
                 }}
                 onDragStart={(event) => onFolderDragStart(folder, event)}
                 onDrop={(event) => onDropOnSibling(item, event)}
-                style={{ paddingLeft: 14 + level * 24 }}
+                style={folderTreeStyle}
               >
+                {level > 0 ? (
+                  <TreeRails contentStart={folderContentStart} railTypes={railTypes} />
+                ) : null}
                 <button
                   aria-expanded={!collapsed}
                   className="folder-toggle-button"
@@ -1251,6 +1283,9 @@ function FolderTree({
               </div>
               {!collapsed ? (
                 <FolderTree
+                  ancestorRails={
+                    level > 0 ? [...ancestorRails, !isLastSibling] : ancestorRails
+                  }
                   collapsedFolderIds={collapsedFolderIds}
                   currentUserId={currentUserId}
                   itemsForParent={itemsForParent}

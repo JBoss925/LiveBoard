@@ -87,6 +87,7 @@ Dashboard organization:
 - folders are owner-scoped and only organize canvases the current user owns
 - folders render as collapsible inline rows inside `Your canvases`
 - folders can be nested under other folders
+- nested folder and canvas rows compute static tree rail segments per indent level: straight rails for continuing non-root ancestors, T rails for rows with following siblings, and L rails for final siblings
 - owned canvases with no `folderId` appear in the implicit root next to root folders
 - folders and owned canvases render as one mixed sibling list ordered by `sortOrder`
 - root canvases and folders are created from the `+` dropdown
