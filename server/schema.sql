@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS canvases (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   owner_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  state JSONB NOT NULL DEFAULT '{"shapes":[]}'::jsonb,
+  state JSONB NOT NULL DEFAULT '{"backgroundColor":"#eff5f5","shapes":[]}'::jsonb,
   revision BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

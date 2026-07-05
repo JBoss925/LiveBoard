@@ -74,7 +74,7 @@ Toolbar color swatches use native `<input type="color">` controls through `Color
 
 Live canvas state comes from `useCanvasSocket`.
 
-Canvas state includes an optional `backgroundColor`. The paint bucket tool writes this field when the user clicks the canvas background.
+Canvas state includes an optional `backgroundColor`. New canvases default to `#eff5f5`, and older canvases without the field render with the same fallback. The paint bucket tool writes this field when the user clicks the canvas background.
 
 ## Dashboard Loading
 

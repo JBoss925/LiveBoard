@@ -60,7 +60,7 @@ async def create_canvas(payload: CanvasCreateRequest, user: CurrentUser) -> Canv
                 canvas_id,
                 validate_canvas_name(payload.name),
                 user["id"],
-                json.dumps({"shapes": []}),
+                json.dumps({"backgroundColor": "#eff5f5", "shapes": []}),
             )
             await conn.execute(
                 "INSERT INTO canvas_members (canvas_id, user_id) VALUES ($1, $2)",

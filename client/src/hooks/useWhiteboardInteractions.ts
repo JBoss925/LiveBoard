@@ -162,7 +162,7 @@ export function useWhiteboardInteractions({
       inverse: {
         id: makeOperationId(),
         kind: "update_canvas",
-        patch: { backgroundColor: canvasState.backgroundColor ?? "#ffffff" },
+        patch: { backgroundColor: canvasState.backgroundColor ?? "#eff5f5" },
       },
     });
     setSelectedIds([]);

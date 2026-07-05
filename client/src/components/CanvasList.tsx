@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { ChevronRight, FileText } from "lucide-react";
 import type { MouseEvent } from "react";
 import type { CanvasSummary } from "../types";
 
@@ -62,6 +62,15 @@ export function CanvasList({
             </span>
           </button>
           <time>{new Date(canvas.updatedAt).toLocaleString()}</time>
+          <button
+            aria-label={`Open ${canvas.name}`}
+            className="canvas-row-open-action"
+            onClick={() => onOpen(canvas.id)}
+            title="Open canvas"
+            type="button"
+          >
+            <ChevronRight aria-hidden="true" size={20} />
+          </button>
         </div>
       ))}
     </div>

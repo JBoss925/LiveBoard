@@ -71,7 +71,7 @@ export function CanvasSvg({
         y="-1000000"
         width="2000000"
         height="2000000"
-        fill={canvasState.backgroundColor ?? "#ffffff"}
+        fill={canvasState.backgroundColor ?? "#eff5f5"}
       />
       {canvasState.shapes.map((shape) => (
         <ShapeRenderer

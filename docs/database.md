@@ -117,7 +117,7 @@ Current state example:
 
 ```json
 {
-  "backgroundColor": "#ffffff",
+  "backgroundColor": "#eff5f5",
   "shapes": [
     {
       "id": "shape-id",

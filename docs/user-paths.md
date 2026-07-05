@@ -58,6 +58,7 @@
 ## Open Canvas
 
 1. User double-clicks a canvas in the dashboard.
+   User can also click the right-side arrow button on a canvas row.
 2. `Whiteboard` mounts and opens:
    - HTTP `GET /api/canvases/{canvas_id}` for name/owner metadata.
    - WebSocket `/ws/canvases/{canvas_id}` for realtime state.
