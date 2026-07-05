@@ -57,7 +57,7 @@ def route_limit(request: Request) -> int | None:
 
 def check_socket_rate(user_id: str, canvas_id: str, message_type: str) -> bool:
     if message_type == "cursor":
-        return limiter.allow(f"ws:{canvas_id}:{user_id}:cursor", 180)
+        return limiter.allow(f"ws:{canvas_id}:{user_id}:cursor", 1500)
     if message_type == "preview_op":
         return limiter.allow(f"ws:{canvas_id}:{user_id}:preview", 120)
     return limiter.allow(f"ws:{canvas_id}:{user_id}:write", 90)

@@ -1,5 +1,6 @@
 import asyncio
 import json
+import math
 from collections import defaultdict
 from contextlib import suppress
 from typing import Any
@@ -488,13 +489,23 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
             if await close_if_session_invalid(ws, canvas_id, user["id"], token):
                 return
             if message_type == "cursor":
+                x = message.get("x")
+                y = message.get("y")
+                if (
+                    not isinstance(x, (int, float))
+                    or not isinstance(y, (int, float))
+                    or not math.isfinite(x)
+                    or not math.isfinite(y)
+                ):
+                    await ws.send_json({"type": "error", "message": "Invalid cursor"})
+                    continue
                 await manager.broadcast(
                     canvas_id,
                     {
                         "type": "cursor",
                         "user": {"id": user["id"], "username": user["username"]},
-                        "x": message.get("x"),
-                        "y": message.get("y"),
+                        "x": x,
+                        "y": y,
                         "selectedShapeId": message.get("selectedShapeId"),
                     },
                     exclude=ws,

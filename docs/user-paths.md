@@ -64,6 +64,13 @@
 3. Backend verifies session and membership.
 4. WebSocket sends `snapshot` with current canvas state, revision, active users, and history status.
 
+## Navigate Canvas
+
+1. Whiteboard renders an SVG viewport centered on canvas coordinate `0,0`.
+2. User scrolls over the canvas to zoom in or out around the cursor.
+3. User middle-button drags anywhere, or uses the select tool and drags the background, to pan the viewport.
+4. Pan and zoom are local viewport state only; they do not create canvas history entries or affect other editors.
+
 ## Rename Canvas In Whiteboard
 
 1. Owner clicks the canvas title in the whiteboard header.

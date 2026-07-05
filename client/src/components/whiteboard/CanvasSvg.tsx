@@ -1,7 +1,5 @@
-import type { MouseEvent, PointerEvent, ReactNode } from "react";
+import type { MouseEvent, PointerEvent, ReactNode, WheelEvent } from "react";
 import {
-  CANVAS_HEIGHT,
-  CANVAS_WIDTH,
   type CanvasState,
   type RemoteCursor,
   type ResizeHandle,
@@ -17,9 +15,12 @@ type CanvasSvgProps = {
   selectedShape: Shape | null;
   textEditor: ReactNode;
   svgRef: React.RefObject<SVGSVGElement | null>;
+  viewBox: string;
+  zoom: number;
   onCanvasPointerDown: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerMove: (event: PointerEvent<SVGSVGElement>) => void;
   onPointerUp: () => void;
+  onWheel: (event: WheelEvent<SVGSVGElement>) => void;
   onShapePointerDown: (event: PointerEvent<SVGElement>, shape: Shape) => void;
   onShapeContextMenu: (event: MouseEvent<SVGElement>, shape: Shape) => void;
   onHandlePointerDown: (
@@ -36,9 +37,12 @@ export function CanvasSvg({
   selectedShape,
   textEditor,
   svgRef,
+  viewBox,
+  zoom,
   onCanvasPointerDown,
   onPointerMove,
   onPointerUp,
+  onWheel,
   onShapePointerDown,
   onShapeContextMenu,
   onHandlePointerDown,
@@ -48,17 +52,20 @@ export function CanvasSvg({
     <svg
       ref={svgRef}
       className="whiteboard-canvas"
-      width={CANVAS_WIDTH}
-      height={CANVAS_HEIGHT}
-      viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
+      viewBox={viewBox}
       onPointerDown={onCanvasPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerLeave={onPointerUp}
+      onWheel={onWheel}
     >
       <rect
-        width={CANVAS_WIDTH}
-        height={CANVAS_HEIGHT}
+        className="canvas-background"
+        data-canvas-background="true"
+        x="-1000000"
+        y="-1000000"
+        width="2000000"
+        height="2000000"
         fill={canvasState.backgroundColor ?? "#ffffff"}
       />
       {canvasState.shapes.map((shape) => (
@@ -77,7 +84,7 @@ export function CanvasSvg({
         />
       ) : null}
       {textEditor}
-      <RemoteCursorLayer cursors={remoteCursors} />
+      <RemoteCursorLayer cursors={remoteCursors} zoom={zoom} />
     </svg>
   );
 }

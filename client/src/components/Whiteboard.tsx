@@ -1,4 +1,13 @@
-import { KeyboardEvent, MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  KeyboardEvent,
+  MouseEvent,
+  PointerEvent,
+  WheelEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ArrowDownToLine,
   ArrowLeft,
@@ -37,6 +46,31 @@ type TextEditState = {
   value: string;
 };
 
+type CanvasViewport = {
+  centerX: number;
+  centerY: number;
+  width: number;
+  height: number;
+  zoom: number;
+};
+
+type PanState = {
+  startClientX: number;
+  startClientY: number;
+  startCenterX: number;
+  startCenterY: number;
+  zoom: number;
+};
+
+const MIN_ZOOM = 0.15;
+const MAX_ZOOM = 6;
+const DEFAULT_VIEWPORT_WIDTH = 1200;
+const DEFAULT_VIEWPORT_HEIGHT = 800;
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   const socket = useCanvasSocket(canvasId);
   const history = useCanvasHistory({
@@ -49,6 +83,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     sendPreviewOperation: socket.sendPreviewOperation,
   });
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const panRef = useRef<PanState | null>(null);
 
   const [canvasName, setCanvasName] = useState("Canvas");
   const [canvasOwnerId, setCanvasOwnerId] = useState<string | null>(null);
@@ -68,7 +103,20 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
   const [textEdit, setTextEdit] = useState<TextEditState | null>(null);
+  const [viewport, setViewport] = useState<CanvasViewport>({
+    centerX: 0,
+    centerY: 0,
+    width: DEFAULT_VIEWPORT_WIDTH,
+    height: DEFAULT_VIEWPORT_HEIGHT,
+    zoom: 1,
+  });
   const committedTextEditId = useRef<string | null>(null);
+
+  const viewBox = useMemo(() => {
+    const width = viewport.width / viewport.zoom;
+    const height = viewport.height / viewport.zoom;
+    return `${viewport.centerX - width / 2} ${viewport.centerY - height / 2} ${width} ${height}`;
+  }, [viewport]);
 
   const selectedShape = useMemo(
     () => findShape(socket.state, selectedId),
@@ -111,6 +159,30 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
       .finally(() => setCanvasLoading(false));
   }, [canvasId]);
 
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) {
+      return;
+    }
+
+    const updateSize = () => {
+      const rect = svg.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) {
+        return;
+      }
+      setViewport((current) => ({
+        ...current,
+        width: rect.width,
+        height: rect.height,
+      }));
+    };
+
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(svg);
+    return () => observer.disconnect();
+  }, []);
+
   async function renameCanvasTitle(name: string) {
     if (canvasOwnerId !== user.id) {
       setCanvasRenameError("Only the canvas owner can rename this canvas.");
@@ -127,6 +199,96 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     } finally {
       setCanvasRenameSaving(false);
     }
+  }
+
+  function shouldPanCanvas(event: PointerEvent<SVGSVGElement>): boolean {
+    const target = event.target;
+    const isBackground =
+      target instanceof SVGElement && target.dataset.canvasBackground === "true";
+    return event.button === 1 || (tool === "select" && isBackground);
+  }
+
+  function startCanvasPan(event: PointerEvent<SVGElement>) {
+    event.preventDefault();
+    svgRef.current?.setPointerCapture(event.pointerId);
+    panRef.current = {
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      startCenterX: viewport.centerX,
+      startCenterY: viewport.centerY,
+      zoom: viewport.zoom,
+    };
+  }
+
+  function handleCanvasPointerDown(event: PointerEvent<SVGSVGElement>) {
+    if (shouldPanCanvas(event)) {
+      startCanvasPan(event);
+      setSelectedId(null);
+      return;
+    }
+
+    interactions.handleCanvasPointerDown(event);
+  }
+
+  function handleCanvasPointerMove(event: PointerEvent<SVGSVGElement>) {
+    const pan = panRef.current;
+    if (pan) {
+      const dx = event.clientX - pan.startClientX;
+      const dy = event.clientY - pan.startClientY;
+      setViewport((current) => ({
+        ...current,
+        centerX: pan.startCenterX - dx / pan.zoom,
+        centerY: pan.startCenterY - dy / pan.zoom,
+      }));
+      return;
+    }
+
+    interactions.handlePointerMove(event);
+  }
+
+  function handleCanvasPointerUp() {
+    if (panRef.current) {
+      panRef.current = null;
+      return;
+    }
+    interactions.handlePointerUp();
+  }
+
+  function handleShapePointerDown(event: PointerEvent<SVGElement>, shape: Shape) {
+    if (event.button === 1) {
+      event.stopPropagation();
+      startCanvasPan(event);
+      return;
+    }
+    interactions.handleShapePointerDown(event, shape);
+  }
+
+  function handleCanvasWheel(event: WheelEvent<SVGSVGElement>) {
+    event.preventDefault();
+    const svg = svgRef.current;
+    if (!svg) {
+      return;
+    }
+
+    const rect = svg.getBoundingClientRect();
+    const offsetX = event.clientX - rect.left;
+    const offsetY = event.clientY - rect.top;
+
+    setViewport((current) => {
+      const nextZoom = clamp(
+        current.zoom * Math.exp(-event.deltaY * 0.001),
+        MIN_ZOOM,
+        MAX_ZOOM,
+      );
+      const worldX = current.centerX + (offsetX - current.width / 2) / current.zoom;
+      const worldY = current.centerY + (offsetY - current.height / 2) / current.zoom;
+      return {
+        ...current,
+        centerX: worldX - (offsetX - current.width / 2) / nextZoom,
+        centerY: worldY - (offsetY - current.height / 2) / nextZoom,
+        zoom: nextZoom,
+      };
+    });
   }
 
   useEffect(() => {
@@ -385,10 +547,13 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
                 ) : null
               }
               svgRef={svgRef}
-              onCanvasPointerDown={interactions.handleCanvasPointerDown}
-              onPointerMove={interactions.handlePointerMove}
-              onPointerUp={interactions.handlePointerUp}
-              onShapePointerDown={interactions.handleShapePointerDown}
+              viewBox={viewBox}
+              zoom={viewport.zoom}
+              onCanvasPointerDown={handleCanvasPointerDown}
+              onPointerMove={handleCanvasPointerMove}
+              onPointerUp={handleCanvasPointerUp}
+              onWheel={handleCanvasWheel}
+              onShapePointerDown={handleShapePointerDown}
               onShapeContextMenu={handleShapeContextMenu}
               onHandlePointerDown={interactions.handleHandlePointerDown}
               onTextDoubleClick={interactions.handleTextDoubleClick}

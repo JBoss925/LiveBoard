@@ -147,10 +147,16 @@ Ignores shortcuts while typing in inputs, textareas, or contenteditable elements
 
 ## Shape Rendering
 
-Canvas is an SVG with fixed logical dimensions:
+Canvas is an SVG viewport into shared canvas coordinates. The viewport fills the available space to the right of the toolbar and below the board header.
 
-- `CANVAS_WIDTH = 1200`
-- `CANVAS_HEIGHT = 800`
+Viewport controls:
+
+- mouse wheel zooms around the cursor
+- zoom is clamped between `0.15x` and `6x`
+- middle-button drag pans from any canvas point
+- with the select tool active, dragging the background also pans
+
+Remote cursors are positioned in canvas coordinates but inverse-scaled by the current zoom so they keep a consistent on-screen size.
 
 Shape rendering:
 

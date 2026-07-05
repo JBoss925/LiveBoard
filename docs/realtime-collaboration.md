@@ -58,6 +58,8 @@ This is intentionally single-server.
 { "type": "cursor", "x": 120, "y": 200, "selectedShapeId": "shape-id" }
 ```
 
+Cursor `x` and `y` are canvas-world coordinates. They may be negative or large because the viewport is functionally infinite; the server only requires finite numeric values.
+
 ```json
 { "type": "preview_op", "op": { "id": "...", "kind": "update_shape", "shapeId": "...", "patch": {} } }
 ```

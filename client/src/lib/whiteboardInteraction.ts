@@ -6,11 +6,11 @@ import {
   type Point,
 } from "./geometry";
 import { makeOperationId } from "./operations";
-import type { HistoryEntry, ResizeHandle, Shape, Tool } from "../types";
+import type { HistoryEntry, ResizeHandle, Shape, ShapeType } from "../types";
 
 export type Interaction =
   | { mode: "idle" }
-  | { mode: "draw"; tool: Exclude<Tool, "select" | "text">; start: Point; draft: Shape }
+  | { mode: "draw"; tool: Exclude<ShapeType, "text">; start: Point; draft: Shape }
   | { mode: "move"; start: Point; before: Shape; last: Shape }
   | { mode: "resize"; start: Point; handle: ResizeHandle; before: Shape; last: Shape };
 
