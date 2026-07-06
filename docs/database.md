@@ -38,6 +38,7 @@ erDiagram
     text name
     text owner_id FK
     text folder_id FK
+    integer sort_order
     jsonb state
     bigint revision
     timestamptz created_at
@@ -49,6 +50,7 @@ erDiagram
     text owner_id FK
     text parent_id FK
     text name
+    integer sort_order
     timestamptz created_at
     timestamptz updated_at
   }

@@ -103,7 +103,7 @@ Requires ownership of every listed item. Rewrites `sort_order` for one mixed fol
 
 ### `PATCH /api/canvases/{canvas_id}/folder`
 
-Requires owner. Moves an owned canvas into one of the owner’s folders or clears `folder_id` to return it to Unfiled.
+Requires owner. Moves an owned canvas into one of the owner’s folders or clears `folder_id` to return it to the implicit root list.
 
 ### `PATCH /api/canvases/{canvas_id}`
 

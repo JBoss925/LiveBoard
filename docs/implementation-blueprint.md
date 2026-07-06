@@ -22,9 +22,10 @@ Create tables in this order:
 1. `users`
 2. `sessions`
 3. `canvases`
-4. `canvas_members`
-5. `canvas_ops`
-6. `canvas_history`
+4. `canvas_folders`
+5. `canvas_members`
+6. `canvas_ops`
+7. `canvas_history`
 
 Use idempotent schema execution so startup can safely apply missing columns/indexes. See [Database](./database.md) for fields and formats.
 
@@ -52,6 +53,9 @@ Implement:
 - list canvases by membership
 - create canvas and owner membership
 - get canvas detail by membership
+- list/create/rename/move/delete owner-scoped folders
+- move owned canvases into folders or back to the implicit root
+- reorder one mixed folder/canvas sibling list at a time
 - list members by membership
 - invite user by owner only
 - remove member by owner only
@@ -66,7 +70,7 @@ Keep ownership and membership helpers separate:
 Use a top-level canvas state:
 
 ```json
-{ "shapes": [] }
+{ "backgroundColor": "#eff5f5", "shapes": [] }
 ```
 
 Shape kinds:
@@ -83,6 +87,8 @@ Every shape carries:
 - stroke/fill color
 - stroke/fill opacity
 - stroke width
+- optional rotation
+- optional groupIds nesting stack
 - `createdBy`
 - `updatedAt`
 
@@ -97,7 +103,9 @@ Text also carries:
 
 Implement operation kinds:
 
+- `batch`
 - `create_shape`
+- `update_canvas`
 - `update_shape`
 - `delete_shape`
 - `reorder_shape`
@@ -105,6 +113,8 @@ Implement operation kinds:
 Both frontend and backend need equivalent apply behavior. Backend is authoritative.
 
 Backend also needs `invert_operation(state_before, op)` to derive undo operations from locked server state.
+
+Use `batch` for one user action that affects multiple shapes, such as multi-select transforms, grouping, ungrouping, multi-style updates, and grouped shape movement. Reject nested batches so inverse derivation stays straightforward.
 
 ## 7. Build WebSocket Collaboration
 
@@ -185,6 +195,8 @@ Whiteboard should compose:
 - share modal
 - context menu
 - inline text editor
+- selection overlay with resize and rotation handles
+- remote cursor layer
 
 Keep interaction state in hooks, not render components.
 
@@ -195,11 +207,24 @@ Use `lucide-react` for semantic icons in toolbars, headers, modals, and context 
 Use an interaction state machine:
 
 - idle
+- box-selecting
 - draw
 - move
 - resize
+- rotate
+- pan
 
 Apply local updates immediately. Send preview updates during drag/resize. Send one durable operation on pointer up.
+
+The SVG should behave as a viewport into canvas-world coordinates:
+
+- mouse wheel zooms around the cursor
+- zoom is clamped between reasonable minimum and maximum values
+- middle-button drag and background drag pan the viewport
+- select-tool background drag draws a box selection
+- remote cursors and transform handles counter-scale against zoom so they remain usable on screen
+
+Multi-selected shapes and selected groups should move, scale, and rotate as one unit. Grouped member shapes cannot be individually edited; nested grouping appends a new parent group id rather than flattening child groups.
 
 ## 12. Build Security And Runtime Guards
 

@@ -7,19 +7,22 @@ LiveBoard is a real-time collaborative whiteboard for small design-review sessio
 - Account signup, login, logout, and session persistence.
 - Dashboard of canvases the current user can access.
 - Canvas creation by authenticated users.
+- Nested owner-scoped dashboard folders with drag/drop moves and sibling ordering.
 - Owner-managed canvas sharing by username or email.
 - Owner-managed access removal.
 - Realtime collaborative editing over WebSockets.
 - Presence list and remote cursors.
 - Shape creation for rectangles, ellipses, lines, and text.
-- Shape selection, movement, resize, deletion, z-ordering, color, opacity, stroke width, and text size controls.
+- Functionally infinite canvas viewport with wheel zoom, middle-button/background pan, and box selection.
+- Shape selection, multi-selection, movement, resize, rotation, deletion, z-ordering, color, opacity, stroke width, and text size controls.
+- Grouping, nested grouping, group transforms, and locked group-member editing.
 - Inline text editing on the canvas.
 - Server-backed undo and redo shared across all editors.
 - Durable canvas state in PostgreSQL.
 
 ## Intentional Scope
 
-LiveBoard is not a general-purpose infinite whiteboard. It does not implement:
+LiveBoard focuses on a small-team collaborative drawing surface rather than a full whiteboard suite. It does not implement:
 
 - Multi-server WebSocket fanout.
 - Character-by-character collaborative text editing.
@@ -28,7 +31,6 @@ LiveBoard is not a general-purpose infinite whiteboard. It does not implement:
 - File/image uploads.
 - Rich text.
 - Export.
-- Canvas zoom/pan.
 - Mobile-first touch workflows.
 
 ## Runtime Stack

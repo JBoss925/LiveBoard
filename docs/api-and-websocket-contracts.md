@@ -172,7 +172,7 @@ Request:
 { "folderId": "folder-id" }
 ```
 
-Use `{ "folderId": null }` to move the canvas to Unfiled.
+Use `{ "folderId": null }` to move the canvas to the implicit root list.
 
 #### `DELETE /api/canvases/{canvas_id}`
 
