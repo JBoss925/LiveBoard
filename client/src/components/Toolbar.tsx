@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef } from "react";
 import {
   Circle,
   type LucideIcon,
@@ -58,6 +58,11 @@ const tools: Array<{ id: Tool; label: string; icon: LucideIcon }> = [
   { id: "text", label: "Text", icon: Type },
   { id: "bucket", label: "Paint bucket", icon: PaintBucket },
 ];
+
+function sliderProgress(value: number, min: number, max: number): CSSProperties {
+  const percent = ((value - min) / (max - min)) * 100;
+  return { "--slider-progress": `${Math.max(0, Math.min(100, percent))}%` } as CSSProperties;
+}
 
 export function Toolbar({
   tool,
@@ -328,6 +333,7 @@ function TextSizeSlider({ value, disabled = false, onChange, onCommit }: TextSiz
         min="8"
         max="72"
         value={roundedValue}
+        style={sliderProgress(roundedValue, 8, 72)}
         disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
         onKeyUp={commitCurrentValue}
@@ -362,6 +368,7 @@ function StrokeWidthSlider({ value, disabled = false, onChange, onCommit }: Stro
         min="0"
         max="16"
         value={roundedValue}
+        style={sliderProgress(roundedValue, 0, 16)}
         disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
         onKeyUp={commitCurrentValue}
@@ -397,6 +404,7 @@ function AlphaSlider({ label, value, disabled = false, onChange, onCommit }: Alp
         min="0"
         max="100"
         value={percent}
+        style={sliderProgress(percent, 0, 100)}
         disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value) / 100)}
         onKeyUp={commitCurrentValue}
