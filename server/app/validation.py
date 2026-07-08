@@ -2,8 +2,8 @@ from typing import Any
 
 from fastapi import HTTPException, status
 
-CANVAS_WIDTH = 1200
-CANVAS_HEIGHT = 800
+MAX_CANVAS_COORDINATE = 1_000_000
+MAX_SHAPE_SIZE = 10_000
 MAX_WS_MESSAGE_BYTES = 64_000
 MAX_TEXT_LENGTH = 2_000
 MAX_SHAPES_PER_CANVAS = 500
@@ -185,9 +185,17 @@ def validate_common_style(value: dict[str, Any], partial: bool = False) -> None:
 
 def validate_rect_like(value: dict[str, Any], partial: bool = False) -> None:
     require_fields(value, [] if partial else ["x", "y", "width", "height"])
-    for field in ["x", "y", "width", "height"]:
+    for field in ["x", "y"]:
         if field in value:
-            validate_range(value[field], -CANVAS_WIDTH, CANVAS_WIDTH * 2, field)
+            validate_range(
+                value[field],
+                -MAX_CANVAS_COORDINATE,
+                MAX_CANVAS_COORDINATE,
+                field,
+            )
+    for field in ["width", "height"]:
+        if field in value:
+            validate_range(value[field], 1, MAX_SHAPE_SIZE, field)
     if "width" in value and value["width"] < 1:
         raise ValueError("Width must be positive")
     if "height" in value and value["height"] < 1:
@@ -198,7 +206,12 @@ def validate_line(value: dict[str, Any], partial: bool = False) -> None:
     require_fields(value, [] if partial else ["x1", "y1", "x2", "y2"])
     for field in ["x1", "y1", "x2", "y2"]:
         if field in value:
-            validate_range(value[field], -CANVAS_WIDTH, CANVAS_WIDTH * 2, field)
+            validate_range(
+                value[field],
+                -MAX_CANVAS_COORDINATE,
+                MAX_CANVAS_COORDINATE,
+                field,
+            )
 
 
 def validate_text_shape(value: dict[str, Any], partial: bool = False) -> None:

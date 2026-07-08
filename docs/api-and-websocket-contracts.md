@@ -251,6 +251,8 @@ type CanvasOperation =
 
 Shape objects may include optional `rotation: number`, `groupId: string`, and `groupIds: string[]`. `rotation` stores degrees for rect-like shapes; line rotation is represented by endpoint updates. `groupIds` is the ordered nesting stack for groups; the frontend treats the last id in the array as the active/top group. `groupId` remains supported for flat legacy shapes and mirrors the first id in the stack. `update_shape` can set `rotation`, can set `groupIds` to append or remove a nesting level, and can set `groupId` or `groupIds` to `null` to remove those fields.
 
+Position coordinates are finite canvas-world values and are not limited to the initial `1200x800` viewport. The backend accepts large finite coordinates for moved shapes so durable operations match the functionally infinite canvas model.
+
 `batch` applies child operations in order and is used when one user action must affect multiple shapes as one undoable operation. Nested `batch` operations are rejected.
 
 ## WebSocket API

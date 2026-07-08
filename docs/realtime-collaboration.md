@@ -68,6 +68,8 @@ Redis Pub/Sub is treated as best-effort transport. Durable state remains in Post
 
 Cursor `x` and `y` are canvas-world coordinates. They may be negative or large because the viewport is functionally infinite; the server only requires finite numeric values.
 
+Durable shape positions follow the same model: moved shapes may use large negative or positive finite world coordinates. The backend validates them against a broad operational range rather than the initial viewport size.
+
 ```json
 { "type": "preview_op", "op": { "id": "...", "kind": "update_shape", "shapeId": "...", "patch": {} } }
 ```
