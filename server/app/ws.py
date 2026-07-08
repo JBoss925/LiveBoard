@@ -224,13 +224,16 @@ class CanvasRoomManager:
     async def broadcast_leave_if_inactive(
         self, canvas_id: str, user_id: str, exclude: WebSocket | None
     ) -> None:
-        await asyncio.sleep(PRESENCE_LEAVE_DELAY_SECONDS)
-        if not await self.has_active_user(canvas_id, user_id):
-            await self.broadcast(
-                canvas_id,
-                {"type": "presence_leave", "userId": user_id},
-                exclude=exclude,
-            )
+        try:
+            await asyncio.sleep(PRESENCE_LEAVE_DELAY_SECONDS)
+            if not await self.has_active_user(canvas_id, user_id):
+                await self.broadcast(
+                    canvas_id,
+                    {"type": "presence_leave", "userId": user_id},
+                    exclude=exclude,
+                )
+        except Exception:
+            pass
 
     async def publish(self, canvas_id: str, message: dict[str, Any]) -> None:
         redis_client = await get_redis()
@@ -618,16 +621,20 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
         return
 
     await manager.connect(canvas_id, ws, user)
-    await ws.send_json(
-        {
-            "type": "snapshot",
-            "canvasId": canvas_id,
-            "revision": int(canvas["revision"]),
-            "state": decode_state(canvas["state"]),
-            "users": await manager.active_users(canvas_id),
-            "history": await get_history_status(canvas_id),
-        }
-    )
+    try:
+        await ws.send_json(
+            {
+                "type": "snapshot",
+                "canvasId": canvas_id,
+                "revision": int(canvas["revision"]),
+                "state": decode_state(canvas["state"]),
+                "users": await manager.active_users(canvas_id),
+                "history": await get_history_status(canvas_id),
+            }
+        )
+    except (RuntimeError, WebSocketDisconnect):
+        await manager.disconnect(canvas_id, ws)
+        return
 
     try:
         while True:
