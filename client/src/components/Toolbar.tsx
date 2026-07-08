@@ -30,7 +30,7 @@ type ToolbarProps = {
   canUndo: boolean;
   canRedo: boolean;
   hasSelection: boolean;
-  showTextControls: boolean;
+  canEditTextControls: boolean;
   styleDisabled?: boolean;
   onToolChange: (tool: Tool) => void;
   onStrokeColorChange: (color: string) => void;
@@ -83,7 +83,7 @@ export function Toolbar({
   canUndo,
   canRedo,
   hasSelection,
-  showTextControls,
+  canEditTextControls,
   styleDisabled = false,
   onToolChange,
   onStrokeColorChange,
@@ -168,35 +168,40 @@ export function Toolbar({
             onCommit={onFillOpacityCommit}
           />
         </label>
-        {showTextControls ? (
-          <label title="Text color">
-            Text
-            <ColorInput
-              value={textColor}
-              disabled={styleDisabled}
-              onChange={onTextColorChange}
-              onCommit={onTextColorCommit}
-            />
-            <AlphaSlider
-              label="Text opacity"
-              value={textOpacity}
-              disabled={styleDisabled}
-              onChange={onTextOpacityChange}
-              onCommit={onTextOpacityCommit}
-            />
-            <TextSizeSlider
-              value={textSize}
-              disabled={styleDisabled}
-              onChange={onTextSizeChange}
-              onCommit={onTextSizeCommit}
-            />
-            <TextAlignControl
-              value={textAlign}
-              disabled={styleDisabled}
-              onChange={onTextAlignChange}
-            />
-          </label>
-        ) : null}
+        <label
+          className={!canEditTextControls || styleDisabled ? "disabled-control-group" : ""}
+          title={
+            canEditTextControls
+              ? "Text controls"
+              : "Select an unlocked text object to edit text style"
+          }
+        >
+          Text
+          <ColorInput
+            value={textColor}
+            disabled={styleDisabled || !canEditTextControls}
+            onChange={onTextColorChange}
+            onCommit={onTextColorCommit}
+          />
+          <AlphaSlider
+            label="Text opacity"
+            value={textOpacity}
+            disabled={styleDisabled || !canEditTextControls}
+            onChange={onTextOpacityChange}
+            onCommit={onTextOpacityCommit}
+          />
+          <TextSizeSlider
+            value={textSize}
+            disabled={styleDisabled || !canEditTextControls}
+            onChange={onTextSizeChange}
+            onCommit={onTextSizeCommit}
+          />
+          <TextAlignControl
+            value={textAlign}
+            disabled={styleDisabled || !canEditTextControls}
+            onChange={onTextAlignChange}
+          />
+        </label>
       </div>
 
             <div className="tool-group tool-grid">

@@ -673,7 +673,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
           canUndo={history.canUndo}
           canRedo={history.canRedo}
           hasSelection={canEditSelection}
-          showTextControls={selectionIsOnlyText}
+          canEditTextControls={selectionIsOnlyText}
           onToolChange={setTool}
           onStrokeColorChange={(color) => {
             previewToolbarColor("strokeColor", color);

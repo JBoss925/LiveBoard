@@ -147,7 +147,7 @@
 2. Toolbar syncs only values shared by every relevant selected shape.
 3. Color input changes commit after the selected color rests or the input blurs.
 4. Opacity and stroke width sliders update toolbar state while dragging and commit on pointer/key release.
-5. Text size uses a pixel input with increase/decrease buttons, and text alignment uses left/center/right buttons.
+5. Text controls remain visible for discoverability. They are disabled until the selection contains only unlocked text shapes; text size uses a pixel input with increase/decrease buttons, and text alignment uses left/center/right buttons.
 6. Style updates apply to every selected unlocked shape. One shape uses `update_shape`; multiple shapes use `batch`.
 7. Selecting a grouped shape leaves style controls editable as future drawing defaults, but does not apply style changes to grouped members because groups are locked.
 
