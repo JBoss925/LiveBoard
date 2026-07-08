@@ -198,7 +198,8 @@ Response:
   "sortOrder": 1024,
   "revision": 3,
   "updatedAt": "2026-07-04T19:00:00+00:00",
-  "state": { "shapes": [] }
+  "state": { "shapes": [] },
+  "history": { "canUndo": true, "canRedo": false }
 }
 ```
 

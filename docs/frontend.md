@@ -137,7 +137,7 @@ Receives and applies:
 - history status
 - access/session invalidation
 
-If an `op_applied` message has a revision greater than the next expected revision, `useCanvasSocket` treats that as a missed durable event and refreshes the authoritative canvas snapshot with `GET /api/canvases/{canvas_id}` before continuing. This protects scaled backends from best-effort Redis Pub/Sub gaps.
+If an `op_applied` message has a revision greater than the next expected revision, `useCanvasSocket` treats that as a missed durable event and refreshes the authoritative canvas snapshot and history status with `GET /api/canvases/{canvas_id}` before continuing. This protects scaled backends from best-effort Redis Pub/Sub gaps.
 
 ### `useWhiteboardInteractions`
 

@@ -107,6 +107,7 @@ export type CanvasSummary = {
 
 export type CanvasDetail = CanvasSummary & {
   state: CanvasState;
+  history?: HistoryStatus;
 };
 
 export type CanvasFolder = {

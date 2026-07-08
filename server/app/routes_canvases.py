@@ -28,7 +28,7 @@ from app.schemas import (
     InviteResponse,
 )
 from app.validation import validate_canvas_name
-from app.ws import manager
+from app.ws import get_history_status, manager
 
 router = APIRouter()
 
@@ -351,7 +351,11 @@ async def reorder_dashboard_items(
 async def get_canvas(canvas_id: str, user: CurrentUser) -> CanvasDetail:
     row = await require_canvas_member(canvas_id, user["id"])
     summary = canvas_summary(row)
-    return CanvasDetail(**summary.model_dump(), state=decode_state(row["state"]))
+    return CanvasDetail(
+        **summary.model_dump(),
+        state=decode_state(row["state"]),
+        history=await get_history_status(canvas_id),
+    )
 
 
 @router.patch("/api/canvases/{canvas_id}", response_model=CanvasSummary)

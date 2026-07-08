@@ -78,6 +78,7 @@ class CanvasSummary(BaseModel):
 
 class CanvasDetail(CanvasSummary):
     state: dict
+    history: dict[str, bool] | None = None
 
 
 class InviteRequest(BaseModel):

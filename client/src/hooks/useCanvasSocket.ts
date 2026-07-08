@@ -133,7 +133,7 @@ export function useCanvasSocket(canvasId: string) {
         if (disposed) {
           return;
         }
-        applySnapshot(canvas.state, canvas.revision);
+        applySnapshot(canvas.state, canvas.revision, canvas.history);
       } catch {
         refreshInFlight.current = false;
       }
