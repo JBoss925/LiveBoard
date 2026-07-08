@@ -327,6 +327,22 @@ async def get_history_status(canvas_id: str) -> dict[str, bool]:
         return await get_history_status_for_conn(conn, canvas_id)
 
 
+async def get_canvas_snapshot(canvas_id: str) -> dict[str, Any]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT state, revision FROM canvases WHERE id = $1",
+            canvas_id,
+        )
+        if row is None:
+            raise ValueError("Canvas not found")
+        return {
+            "revision": int(row["revision"]),
+            "state": decode_state(row["state"]),
+            "history": await get_history_status_for_conn(conn, canvas_id),
+        }
+
+
 async def get_history_status_for_conn(
     conn: asyncpg.Connection, canvas_id: str
 ) -> dict[str, bool]:
@@ -662,7 +678,25 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
                 await ws.send_json({"type": "error", "message": "Invalid message"})
                 continue
             if not await check_socket_rate(user["id"], canvas_id, message_type):
-                await ws.send_json({"type": "error", "message": "Too many requests"})
+                snapshot = await get_canvas_snapshot(canvas_id)
+                message = "You are making changes too quickly. Syncing to the saved canvas."
+                await ws.send_json(
+                    {
+                        "type": "rate_limited",
+                        "message": message,
+                        "canvasId": canvas_id,
+                        **snapshot,
+                    }
+                )
+                await manager.broadcast(
+                    canvas_id,
+                    {
+                        "type": "preview_reset",
+                        "canvasId": canvas_id,
+                        "userId": user["id"],
+                    },
+                    exclude=ws,
+                )
                 continue
             if await close_if_session_invalid(ws, canvas_id, user["id"], token):
                 return

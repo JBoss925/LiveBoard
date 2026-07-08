@@ -1,6 +1,7 @@
 import time
 from collections import defaultdict, deque
 from collections.abc import Callable
+import os
 from typing import Awaitable
 
 from fastapi import Request, Response, status
@@ -11,6 +12,24 @@ from app.auth import SESSION_COOKIE_NAME, get_user_by_token
 from app.redis_client import get_redis
 
 WINDOW_SECONDS = 60
+
+
+def env_int(name: str, default: int) -> int:
+    value = os.environ.get(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+HTTP_AUTH_LIMIT = env_int("HTTP_AUTH_RATE_LIMIT", 10)
+HTTP_API_LIMIT = env_int("HTTP_API_RATE_LIMIT", 120)
+WS_CURSOR_LIMIT = env_int("WS_CURSOR_RATE_LIMIT", 1500)
+WS_PREVIEW_LIMIT = env_int("WS_PREVIEW_RATE_LIMIT", 1500)
+WS_HISTORY_LIMIT = env_int("WS_HISTORY_RATE_LIMIT", 300)
+WS_WRITE_LIMIT = env_int("WS_WRITE_RATE_LIMIT", 90)
 
 RATE_LIMIT_SCRIPT = """
 local current = redis.call("INCR", KEYS[1])
@@ -71,9 +90,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 def route_limit(request: Request) -> int | None:
     path = request.url.path
     if path in {"/api/auth/login", "/api/auth/signup"}:
-        return 10
+        return HTTP_AUTH_LIMIT
     if path.startswith("/api/"):
-        return 120
+        return HTTP_API_LIMIT
     return None
 
 
@@ -88,9 +107,9 @@ async def request_identity(request: Request, client: str) -> str:
 
 async def check_socket_rate(user_id: str, canvas_id: str, message_type: str) -> bool:
     if message_type == "cursor":
-        return await allow_rate(f"ws:{canvas_id}:{user_id}:cursor", 1500)
+        return await allow_rate(f"ws:{canvas_id}:{user_id}:cursor", WS_CURSOR_LIMIT)
     if message_type == "preview_op":
-        return await allow_rate(f"ws:{canvas_id}:{user_id}:preview", 1500)
+        return await allow_rate(f"ws:{canvas_id}:{user_id}:preview", WS_PREVIEW_LIMIT)
     if message_type in {"undo", "redo"}:
-        return await allow_rate(f"ws:{canvas_id}:{user_id}:history", 300)
-    return await allow_rate(f"ws:{canvas_id}:{user_id}:write", 90)
+        return await allow_rate(f"ws:{canvas_id}:{user_id}:history", WS_HISTORY_LIMIT)
+    return await allow_rate(f"ws:{canvas_id}:{user_id}:write", WS_WRITE_LIMIT)

@@ -71,6 +71,7 @@ type UseWhiteboardInteractionsOptions = {
   svgRef: RefObject<SVGSVGElement | null>;
   tool: Tool;
   userId: string;
+  disabled?: boolean;
   sendCursor: (x: number, y: number, selectedShapeId: string | null) => void;
   onStartTextEdit: (shape: Shape) => void;
 };
@@ -95,6 +96,7 @@ export function useWhiteboardInteractions({
   svgRef,
   tool,
   userId,
+  disabled = false,
   sendCursor,
   onStartTextEdit,
 }: UseWhiteboardInteractionsOptions) {
@@ -299,6 +301,10 @@ export function useWhiteboardInteractions({
   }
 
   function handleCanvasPointerDown(event: PointerEvent<SVGSVGElement>) {
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
     if (event.button !== 0) {
       return;
     }
@@ -340,6 +346,10 @@ export function useWhiteboardInteractions({
 
   function handleShapePointerDown(event: PointerEvent<SVGElement>, shape: Shape) {
     event.stopPropagation();
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
     if (event.button !== 0) {
       return;
     }
@@ -392,6 +402,10 @@ export function useWhiteboardInteractions({
     shape: Shape,
   ) {
     event.stopPropagation();
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
     const combinedBounds = selectedShapes.length > 1 ? getCombinedBounds(selectedShapes) : null;
     if (handle === "rotate") {
       const bounds = combinedBounds ?? getShapeBounds(shape);
@@ -448,6 +462,10 @@ export function useWhiteboardInteractions({
 
   function handleSelectionPointerDown(event: PointerEvent<SVGElement>) {
     event.stopPropagation();
+    if (disabled) {
+      event.preventDefault();
+      return;
+    }
     if (event.button !== 0) {
       return;
     }
@@ -463,6 +481,9 @@ export function useWhiteboardInteractions({
   }
 
   function handlePointerMove(event: PointerEvent<SVGSVGElement>) {
+    if (disabled) {
+      return;
+    }
     const point = pointerPoint(event);
     sendCursor(point.x, point.y, selectedIds[0] ?? null);
     const current = interaction.current;
@@ -541,6 +562,12 @@ export function useWhiteboardInteractions({
   }
 
   function handlePointerUp() {
+    if (disabled) {
+      interaction.current = defaultInteraction;
+      setSelectionBox(null);
+      liveUpdates.cancelPendingLiveUpdate();
+      return;
+    }
     const current = interaction.current;
     interaction.current = defaultInteraction;
     setSelectionBox(null);
@@ -618,6 +645,11 @@ export function useWhiteboardInteractions({
   }
 
   function handleTextDoubleClick(event: MouseEvent<SVGElement>, shape: Shape) {
+    if (disabled) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
     if (shape.type !== "text" || isGroupedShape(shape)) {
       return;
     }

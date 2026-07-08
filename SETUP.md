@@ -44,6 +44,14 @@ docker compose up --build --scale server=3
 
 The `server` containers do not publish host ports directly. The `backend` proxy exposes `localhost:3001` and load-balances HTTP and WebSocket traffic to the scaled backend service.
 
+Rate limits can be lowered from the command line for manual testing:
+
+```bash
+WS_PREVIEW_RATE_LIMIT=3 \
+WS_WRITE_RATE_LIMIT=3 \
+docker compose up --build --scale server=3
+```
+
 See `docs/multi-server-support.md` for the Redis coordination design, tradeoffs, and operational requirements.
 
 ## Running Locally

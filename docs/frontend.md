@@ -211,6 +211,8 @@ Local optimism is reconciled to server truth on snapshot refreshes. A refresh cl
 
 Toolbar color previews are local-only optimism until commit. Their final durable operation is built from the selected shapes as they were before the preview sequence, so undo/redo records one color change instead of every intermediate swatch value.
 
+When the server sends `rate_limited`, `useCanvasSocket` replaces local canvas state with the included durable snapshot, clears pending optimistic operations, shows a short rate-limit banner, and blocks outgoing canvas operations, previews, cursors, undo, and redo while the banner is active. When another client is rate-limited, `preview_reset` tells the frontend to refresh the durable snapshot so transient previews from the rejected client cannot leave remote canvases visually drifted.
+
 ## Toolbar Synchronization
 
 When selection changes, `Whiteboard` copies shared selected-shape style values into toolbar state. A value is copied only when every relevant selected shape shares it. This makes controls reflect single-object selections and homogeneous multi-selections:

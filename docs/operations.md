@@ -28,6 +28,12 @@ Defaults are development-friendly and overrideable:
 | `REDIS_URL` | `redis://redis:6379/0` in Compose | Redis connection used by backend containers |
 | `SESSION_COOKIE_SECURE` | `false` | set `Secure` cookie attribute |
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | comma-separated origins allowed for unsafe API writes |
+| `HTTP_AUTH_RATE_LIMIT` | `10` | login/signup requests per minute |
+| `HTTP_API_RATE_LIMIT` | `120` | API requests per minute per identity/method/path |
+| `WS_CURSOR_RATE_LIMIT` | `1500` | cursor messages per minute per user/canvas |
+| `WS_PREVIEW_RATE_LIMIT` | `1500` | preview messages per minute per user/canvas |
+| `WS_HISTORY_RATE_LIMIT` | `300` | undo/redo messages per minute per user/canvas |
+| `WS_WRITE_RATE_LIMIT` | `90` | durable write messages per minute per user/canvas |
 
 `server` containers expose port `3001` only to the Compose network. The `backend` proxy publishes host port `3001` and forwards HTTP and WebSocket traffic to the backend service.
 

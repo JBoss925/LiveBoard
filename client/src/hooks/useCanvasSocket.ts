@@ -40,6 +40,19 @@ type PreviewMessage = {
   op: CanvasOperation;
 };
 
+type PreviewResetMessage = {
+  type: "preview_reset";
+};
+
+type RateLimitedMessage = {
+  type: "rate_limited";
+  message: string;
+  canvasId: string;
+  revision: number;
+  state: CanvasState;
+  history: HistoryStatus;
+};
+
 type CursorMessage = {
   type: "cursor";
   user: { id: string; username: string };
@@ -68,6 +81,8 @@ type ServerMessage =
   | SnapshotMessage
   | AppliedMessage
   | PreviewMessage
+  | PreviewResetMessage
+  | RateLimitedMessage
   | CursorMessage
   | CanvasRenamedMessage
   | PresenceJoinMessage
@@ -84,6 +99,7 @@ export function useCanvasSocket(canvasId: string) {
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [remoteCursors, setRemoteCursors] = useState<Record<string, RemoteCursor>>({});
   const [accessMessage, setAccessMessage] = useState<string | null>(null);
+  const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
   const [canvasName, setCanvasName] = useState<string | null>(null);
   const [historyStatus, setHistoryStatus] = useState<HistoryStatus>({
     canUndo: false,
@@ -95,12 +111,17 @@ export function useCanvasSocket(canvasId: string) {
   const historyRequestInFlight = useRef(false);
   const revisionRef = useRef(0);
   const refreshInFlight = useRef(false);
+  const rateLimited = useRef(false);
+  const rateLimitTimer = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     let shouldReconnect = true;
     let reconnectTimer: number | undefined;
     let disposed = false;
     setAccessMessage(null);
+    setRateLimitMessage(null);
+    rateLimited.current = false;
+    window.clearTimeout(rateLimitTimer.current);
 
     const applySnapshot = (
       nextState: CanvasState,
@@ -121,6 +142,14 @@ export function useCanvasSocket(canvasId: string) {
       }
       pendingOps.current = [];
       seenOpIds.current.clear();
+    };
+
+    const clearRateLimitSoon = () => {
+      window.clearTimeout(rateLimitTimer.current);
+      rateLimitTimer.current = window.setTimeout(() => {
+        rateLimited.current = false;
+        setRateLimitMessage(null);
+      }, 3000);
     };
 
     const refreshSnapshot = async () => {
@@ -178,6 +207,16 @@ export function useCanvasSocket(canvasId: string) {
         }
         if (message.type === "preview_applied") {
           setState((current) => applyOperation(current, message.op));
+        }
+        if (message.type === "preview_reset") {
+          void refreshSnapshot();
+        }
+        if (message.type === "rate_limited") {
+          historyRequestInFlight.current = false;
+          rateLimited.current = true;
+          setRateLimitMessage(message.message);
+          applySnapshot(message.state, message.revision, message.history);
+          clearRateLimitSoon();
         }
         if (message.type === "cursor") {
           setActiveUsers((current) => upsertActiveUser(current, message.user));
@@ -264,6 +303,7 @@ export function useCanvasSocket(canvasId: string) {
       disposed = true;
       shouldReconnect = false;
       window.clearTimeout(reconnectTimer);
+      window.clearTimeout(rateLimitTimer.current);
       const activeSocket = wsRef.current;
       if (activeSocket?.readyState === WebSocket.OPEN) {
         activeSocket.close();
@@ -294,7 +334,7 @@ export function useCanvasSocket(canvasId: string) {
   }, []);
 
   const sendOperation = useCallback((op: CanvasOperation) => {
-    if (accessMessage) {
+    if (accessMessage || rateLimited.current) {
       return;
     }
     seenOpIds.current.add(op.id);
@@ -307,7 +347,7 @@ export function useCanvasSocket(canvasId: string) {
   }, [accessMessage]);
 
   const sendHistoryEntry = useCallback((entry: HistoryEntry) => {
-    if (accessMessage) {
+    if (accessMessage || rateLimited.current) {
       return;
     }
     seenOpIds.current.add(entry.forward.id);
@@ -324,7 +364,12 @@ export function useCanvasSocket(canvasId: string) {
   }, [accessMessage]);
 
   const requestUndo = useCallback(() => {
-    if (accessMessage || !historyStatus.canUndo || historyRequestInFlight.current) {
+    if (
+      accessMessage ||
+      rateLimited.current ||
+      !historyStatus.canUndo ||
+      historyRequestInFlight.current
+    ) {
       return;
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -334,7 +379,12 @@ export function useCanvasSocket(canvasId: string) {
   }, [accessMessage, historyStatus.canUndo]);
 
   const requestRedo = useCallback(() => {
-    if (accessMessage || !historyStatus.canRedo || historyRequestInFlight.current) {
+    if (
+      accessMessage ||
+      rateLimited.current ||
+      !historyStatus.canRedo ||
+      historyRequestInFlight.current
+    ) {
       return;
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -344,7 +394,7 @@ export function useCanvasSocket(canvasId: string) {
   }, [accessMessage, historyStatus.canRedo]);
 
   const sendPreviewOperation = useCallback((op: CanvasOperation) => {
-    if (accessMessage) {
+    if (accessMessage || rateLimited.current) {
       return;
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -353,7 +403,7 @@ export function useCanvasSocket(canvasId: string) {
   }, [accessMessage]);
 
   const sendCursorNow = useCallback((x: number, y: number, selectedShapeId: string | null) => {
-    if (accessMessage) {
+    if (accessMessage || rateLimited.current) {
       return;
     }
     if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -371,6 +421,8 @@ export function useCanvasSocket(canvasId: string) {
     activeUsers,
     remoteCursors: Object.values(remoteCursors),
     accessMessage,
+    rateLimitMessage,
+    isRateLimited: Boolean(rateLimitMessage),
     canvasName,
     historyStatus,
     setLocalState: setState,

@@ -227,6 +227,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     () => getSharedSelectionValues(selectedShapes),
     [selectedShapes],
   );
+  const canvasInteractionDisabled = socket.isRateLimited;
 
   const interactions = useWhiteboardInteractions({
     canvasState: socket.state,
@@ -246,6 +247,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     svgRef,
     tool,
     userId: user.id,
+    disabled: canvasInteractionDisabled,
     sendCursor: socket.sendCursor,
     onStartTextEdit: startTextEdit,
   });
@@ -314,7 +316,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }
 
   function shouldPanCanvas(event: PointerEvent<SVGSVGElement>): boolean {
-    return event.button === 1;
+    return !canvasInteractionDisabled && event.button === 1;
   }
 
   function startCanvasPan(event: PointerEvent<SVGElement>) {
@@ -365,7 +367,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }
 
   function handleShapePointerDown(event: PointerEvent<SVGElement>, shape: Shape) {
-    if (event.button === 1) {
+    if (!canvasInteractionDisabled && event.button === 1) {
       event.stopPropagation();
       startCanvasPan(event);
       return;
@@ -375,6 +377,9 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
 
   function handleCanvasWheel(event: WheelEvent<SVGSVGElement>) {
     event.preventDefault();
+    if (canvasInteractionDisabled) {
+      return;
+    }
     const svg = svgRef.current;
     if (!svg) {
       return;
@@ -734,6 +739,11 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
             {!socket.connected ? (
               <div className="canvas-loading-banner" role="status">
                 {socket.accessMessage ?? "Syncing live canvas..."}
+              </div>
+            ) : null}
+            {socket.rateLimitMessage ? (
+              <div className="canvas-loading-banner" role="status">
+                {socket.rateLimitMessage}
               </div>
             ) : null}
             {socket.accessMessage ? (

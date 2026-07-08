@@ -103,6 +103,14 @@ Multi-shape user actions use `kind: "batch"` with child operations applied in or
 ```
 
 ```json
+{ "type": "preview_reset", "canvasId": "...", "userId": "..." }
+```
+
+```json
+{ "type": "rate_limited", "message": "...", "canvasId": "...", "revision": 13, "state": {}, "history": {} }
+```
+
+```json
 { "type": "cursor", "user": { "id": "...", "username": "alice" }, "x": 10, "y": 20, "selectedShapeId": null }
 ```
 
@@ -180,3 +188,5 @@ If session is expired/deleted, server sends `session_expired` and closes with co
 If membership is removed, server sends `access_removed` and closes with code `1008`.
 
 Redis access-removal and canvas-deletion messages close affected sockets quickly across backend instances. The periodic and per-message database rechecks remain the correctness layer if a Redis message is missed.
+
+When a WebSocket message is rate-limited, the server does not apply or fan out that rejected message. It sends the limited client a `rate_limited` event containing the latest durable canvas snapshot and broadcasts `preview_reset` to the other clients on that canvas. The limited client pauses canvas input briefly while applying the snapshot; remote clients refresh the durable snapshot so any transient preview position from the limited user is discarded.

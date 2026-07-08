@@ -338,6 +338,25 @@ Preview:
 { "type": "preview_applied", "canvasId": "canvas-id", "userId": "user-id", "op": {} }
 ```
 
+If a sender exceeds a WebSocket rate limit, the sender receives a durable snapshot and pauses canvas interaction briefly:
+
+```json
+{
+  "type": "rate_limited",
+  "message": "You are making changes too quickly. Syncing to the saved canvas.",
+  "canvasId": "canvas-id",
+  "revision": 42,
+  "state": {},
+  "history": { "canUndo": true, "canRedo": false }
+}
+```
+
+Other clients on that canvas receive a preview reset marker so they can discard transient preview state and refresh the durable canvas:
+
+```json
+{ "type": "preview_reset", "canvasId": "canvas-id", "userId": "user-id" }
+```
+
 Presence:
 
 ```json

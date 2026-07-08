@@ -64,13 +64,13 @@ Docker development sets default `ALLOWED_ORIGINS=http://localhost:5173`.
 
 Redis-backed rate limits when `REDIS_URL` is configured:
 
-- login/signup: `10/min` per client IP
-- authenticated HTTP API routes: `120/min` per user/method/path
-- unauthenticated HTTP API routes: `120/min` per client/method/path
-- WebSocket cursor: `1500/min` per user/canvas
-- WebSocket preview: `1500/min` per user/canvas
-- WebSocket undo/redo: `300/min` per user/canvas
-- WebSocket writes: `90/min` per user/canvas
+- login/signup: `10/min` per client IP, override with `HTTP_AUTH_RATE_LIMIT`
+- authenticated HTTP API routes: `120/min` per user/method/path, override with `HTTP_API_RATE_LIMIT`
+- unauthenticated HTTP API routes: `120/min` per client/method/path, override with `HTTP_API_RATE_LIMIT`
+- WebSocket cursor: `1500/min` per user/canvas, override with `WS_CURSOR_RATE_LIMIT`
+- WebSocket preview: `1500/min` per user/canvas, override with `WS_PREVIEW_RATE_LIMIT`
+- WebSocket undo/redo: `300/min` per user/canvas, override with `WS_HISTORY_RATE_LIMIT`
+- WebSocket writes: `90/min` per user/canvas, override with `WS_WRITE_RATE_LIMIT`
 
 When Redis is not configured, the same limits use in-memory counters and are single-process only.
 
