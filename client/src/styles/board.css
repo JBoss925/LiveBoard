@@ -247,6 +247,8 @@
   overflow: hidden;
   padding: 0;
   position: relative;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .whiteboard-canvas {
@@ -270,6 +272,8 @@
   line-height: 1.2;
   padding: 0;
   resize: none;
+  user-select: text;
+  -webkit-user-select: text;
   width: 100%;
 }
 
@@ -278,6 +282,8 @@
   height: 100%;
   line-height: 1.2;
   overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
   white-space: pre-wrap;
   width: 100%;
   word-break: break-word;
