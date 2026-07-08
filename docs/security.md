@@ -62,16 +62,17 @@ Docker development sets default `ALLOWED_ORIGINS=http://localhost:5173`.
 
 ## Rate Limits
 
-In-memory rate limits:
+Redis-backed rate limits when `REDIS_URL` is configured:
 
-- login/signup: `10/min` per client/method/path
-- other HTTP API routes: `120/min`
+- login/signup: `10/min` per client IP
+- authenticated HTTP API routes: `120/min` per user/method/path
+- unauthenticated HTTP API routes: `120/min` per client/method/path
 - WebSocket cursor: `1500/min` per user/canvas
 - WebSocket preview: `1500/min` per user/canvas
 - WebSocket undo/redo: `300/min` per user/canvas
 - WebSocket writes: `90/min` per user/canvas
 
-These are single-server only.
+When Redis is not configured, the same limits use in-memory counters and are single-process only.
 
 ## Authorization Rules
 
@@ -100,7 +101,6 @@ Frontend validation is convenience only; backend validation is authoritative.
 
 ## Remaining Security Tradeoffs
 
-- No multi-server/shared rate limiting.
 - No password reset or email verification.
 - No role tiers beyond owner/member.
 - No audit UI, though `canvas_ops` persists operation history.

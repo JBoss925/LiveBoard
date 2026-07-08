@@ -1,6 +1,7 @@
 import asyncio
 import json
 import math
+import os
 from collections import defaultdict
 from contextlib import suppress
 from typing import Any
@@ -14,9 +15,13 @@ from app.auth import SESSION_COOKIE_NAME, get_user_by_token
 from app.canvas_ops import apply_operation, invert_operation, normalize_state
 from app.db import get_pool
 from app.rate_limit import check_socket_rate
+from app.redis_client import get_redis
 from app.validation import MAX_WS_MESSAGE_BYTES, validate_operation, validate_shape_count
 
 SESSION_RECHECK_SECONDS = 30
+PRESENCE_TTL_SECONDS = 45
+PRESENCE_LEAVE_DELAY_SECONDS = 1.5
+SERVER_ID = os.environ.get("SERVER_ID", str(uuid4()))
 
 
 class CanvasRoomManager:
@@ -25,12 +30,34 @@ class CanvasRoomManager:
     def __init__(self) -> None:
         self.rooms: dict[str, set[WebSocket]] = defaultdict(set)
         self.users: dict[WebSocket, dict[str, str]] = {}
+        self.connection_ids: dict[WebSocket, str] = {}
+        self.subscriber_task: asyncio.Task[None] | None = None
+        self.started = False
+
+    async def start(self) -> None:
+        if self.started:
+            return
+        self.started = True
+        redis_client = await get_redis()
+        if redis_client is not None:
+            self.subscriber_task = asyncio.create_task(self.listen_for_cluster_events())
+
+    async def stop(self) -> None:
+        if self.subscriber_task is not None:
+            self.subscriber_task.cancel()
+            with suppress(asyncio.CancelledError):
+                await self.subscriber_task
+            self.subscriber_task = None
+        self.started = False
 
     async def connect(self, canvas_id: str, ws: WebSocket, user: dict[str, str]) -> None:
         await ws.accept()
-        was_active = self.has_active_user(canvas_id, user["id"])
+        connection_id = str(uuid4())
+        was_active = await self.has_active_user(canvas_id, user["id"])
         self.rooms[canvas_id].add(ws)
         self.users[ws] = user
+        self.connection_ids[ws] = connection_id
+        await self.add_presence(canvas_id, connection_id, user)
         if not was_active:
             await self.broadcast(
                 canvas_id,
@@ -41,16 +68,21 @@ class CanvasRoomManager:
     async def disconnect(self, canvas_id: str, ws: WebSocket) -> None:
         self.rooms[canvas_id].discard(ws)
         user = self.users.pop(ws, None)
+        connection_id = self.connection_ids.pop(ws, None)
+        if connection_id is not None:
+            await self.remove_presence(canvas_id, connection_id)
         if not self.rooms[canvas_id]:
             self.rooms.pop(canvas_id, None)
-        if user is not None and not self.has_active_user(canvas_id, user["id"]):
-            await self.broadcast(
-                canvas_id,
-                {"type": "presence_leave", "userId": user["id"]},
-                exclude=ws,
-            )
+        if user is not None:
+            asyncio.create_task(self.broadcast_leave_if_inactive(canvas_id, user["id"], ws))
 
     async def broadcast(
+        self, canvas_id: str, message: dict[str, Any], exclude: WebSocket | None = None
+    ) -> None:
+        await self.local_broadcast(canvas_id, message, exclude)
+        await self.publish(canvas_id, message)
+
+    async def local_broadcast(
         self, canvas_id: str, message: dict[str, Any], exclude: WebSocket | None = None
     ) -> None:
         stale: list[WebSocket] = []
@@ -71,6 +103,19 @@ class CanvasRoomManager:
         self, canvas_id: str, user_id: str, message: str
     ) -> None:
         """Notify and disconnect every live socket for a user removed from a canvas."""
+        await self.publish(
+            canvas_id,
+            {
+                "type": "cluster_remove_user_access",
+                "userId": user_id,
+                "message": message,
+            },
+        )
+        await self.local_remove_user_access(canvas_id, user_id, message)
+
+    async def local_remove_user_access(
+        self, canvas_id: str, user_id: str, message: str
+    ) -> None:
         removed_clients = [
             client
             for client in list(self.rooms.get(canvas_id, set()))
@@ -88,6 +133,13 @@ class CanvasRoomManager:
 
     async def close_canvas(self, canvas_id: str, message: str) -> None:
         """Notify and disconnect every live socket for a canvas that no longer exists."""
+        await self.publish(
+            canvas_id,
+            {"type": "cluster_close_canvas", "message": message},
+        )
+        await self.local_close_canvas(canvas_id, message)
+
+    async def local_close_canvas(self, canvas_id: str, message: str) -> None:
         clients = list(self.rooms.get(canvas_id, set()))
         for client in clients:
             try:
@@ -99,7 +151,10 @@ class CanvasRoomManager:
             finally:
                 await self.disconnect(canvas_id, client)
 
-    def active_users(self, canvas_id: str) -> list[dict[str, str]]:
+    async def active_users(self, canvas_id: str) -> list[dict[str, str]]:
+        redis_client = await get_redis()
+        if redis_client is not None:
+            return await self.redis_active_users(canvas_id)
         seen: set[str] = set()
         users: list[dict[str, str]] = []
         for client in self.rooms.get(canvas_id, set()):
@@ -109,11 +164,122 @@ class CanvasRoomManager:
                 users.append(user)
         return users
 
-    def has_active_user(self, canvas_id: str, user_id: str) -> bool:
+    async def has_active_user(self, canvas_id: str, user_id: str) -> bool:
+        users = await self.active_users(canvas_id)
+        if users:
+            return any(user["id"] == user_id for user in users)
         return any(
             self.users.get(client, {}).get("id") == user_id
             for client in self.rooms.get(canvas_id, set())
         )
+
+    async def refresh_presence(self, canvas_id: str, ws: WebSocket) -> None:
+        connection_id = self.connection_ids.get(ws)
+        user = self.users.get(ws)
+        if connection_id is not None and user is not None:
+            await self.add_presence(canvas_id, connection_id, user)
+
+    async def add_presence(
+        self, canvas_id: str, connection_id: str, user: dict[str, str]
+    ) -> None:
+        redis_client = await get_redis()
+        if redis_client is None:
+            return
+        conn_key = f"liveboard:presence:conn:{connection_id}"
+        canvas_key = f"liveboard:presence:{canvas_id}:connections"
+        await redis_client.set(conn_key, json.dumps(user), ex=PRESENCE_TTL_SECONDS)
+        await redis_client.sadd(canvas_key, connection_id)
+        await redis_client.expire(canvas_key, PRESENCE_TTL_SECONDS)
+
+    async def remove_presence(self, canvas_id: str, connection_id: str) -> None:
+        redis_client = await get_redis()
+        if redis_client is None:
+            return
+        await redis_client.delete(f"liveboard:presence:conn:{connection_id}")
+        await redis_client.srem(f"liveboard:presence:{canvas_id}:connections", connection_id)
+
+    async def redis_active_users(self, canvas_id: str) -> list[dict[str, str]]:
+        redis_client = await get_redis()
+        if redis_client is None:
+            return []
+        canvas_key = f"liveboard:presence:{canvas_id}:connections"
+        connection_ids = await redis_client.smembers(canvas_key)
+        seen: set[str] = set()
+        users: list[dict[str, str]] = []
+        expired: list[str] = []
+        for connection_id in connection_ids:
+            raw_user = await redis_client.get(f"liveboard:presence:conn:{connection_id}")
+            if raw_user is None:
+                expired.append(connection_id)
+                continue
+            user = json.loads(raw_user)
+            if isinstance(user, dict) and isinstance(user.get("id"), str):
+                if user["id"] not in seen:
+                    seen.add(user["id"])
+                    users.append(user)
+        if expired:
+            await redis_client.srem(canvas_key, *expired)
+        return users
+
+    async def broadcast_leave_if_inactive(
+        self, canvas_id: str, user_id: str, exclude: WebSocket | None
+    ) -> None:
+        await asyncio.sleep(PRESENCE_LEAVE_DELAY_SECONDS)
+        if not await self.has_active_user(canvas_id, user_id):
+            await self.broadcast(
+                canvas_id,
+                {"type": "presence_leave", "userId": user_id},
+                exclude=exclude,
+            )
+
+    async def publish(self, canvas_id: str, message: dict[str, Any]) -> None:
+        redis_client = await get_redis()
+        if redis_client is None:
+            return
+        envelope = {"origin": SERVER_ID, "canvasId": canvas_id, "message": message}
+        await redis_client.publish(
+            f"liveboard:canvas:{canvas_id}:events",
+            json.dumps(envelope),
+        )
+
+    async def listen_for_cluster_events(self) -> None:
+        redis_client = await get_redis()
+        if redis_client is None:
+            return
+        pubsub = redis_client.pubsub()
+        await pubsub.psubscribe("liveboard:canvas:*:events")
+        try:
+            async for event in pubsub.listen():
+                if event.get("type") != "pmessage":
+                    continue
+                try:
+                    envelope = json.loads(event.get("data") or "{}")
+                    if envelope.get("origin") == SERVER_ID:
+                        continue
+                    canvas_id = envelope.get("canvasId")
+                    message = envelope.get("message")
+                    if not isinstance(canvas_id, str) or not isinstance(message, dict):
+                        continue
+                    await self.handle_cluster_message(canvas_id, message)
+                except (TypeError, ValueError, json.JSONDecodeError):
+                    continue
+        finally:
+            await pubsub.aclose()
+
+    async def handle_cluster_message(self, canvas_id: str, message: dict[str, Any]) -> None:
+        message_type = message.get("type")
+        if message_type == "cluster_remove_user_access":
+            user_id = message.get("userId")
+            text = message.get("message")
+            if isinstance(user_id, str) and isinstance(text, str):
+                await self.local_remove_user_access(canvas_id, user_id, text)
+            return
+        if message_type == "cluster_close_canvas":
+            text = message.get("message")
+            if isinstance(text, str):
+                await self.local_close_canvas(canvas_id, text)
+            return
+        await self.local_broadcast(canvas_id, message)
 
 
 manager = CanvasRoomManager()
@@ -458,7 +624,7 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
             "canvasId": canvas_id,
             "revision": int(canvas["revision"]),
             "state": decode_state(canvas["state"]),
-            "users": manager.active_users(canvas_id),
+            "users": await manager.active_users(canvas_id),
             "history": await get_history_status(canvas_id),
         }
     )
@@ -488,11 +654,12 @@ async def canvas_ws(ws: WebSocket, canvas_id: str) -> None:
             if not isinstance(message_type, str):
                 await ws.send_json({"type": "error", "message": "Invalid message"})
                 continue
-            if not check_socket_rate(user["id"], canvas_id, message_type):
+            if not await check_socket_rate(user["id"], canvas_id, message_type):
                 await ws.send_json({"type": "error", "message": "Too many requests"})
                 continue
             if await close_if_session_invalid(ws, canvas_id, user["id"], token):
                 return
+            await manager.refresh_presence(canvas_id, ws)
             if message_type == "cursor":
                 x = message.get("x")
                 y = message.get("y")

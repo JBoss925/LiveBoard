@@ -19,7 +19,9 @@ docker compose up --build
 This starts:
 
 - **PostgreSQL** on port `5432`
-- **Backend (FastAPI)** on port `3001`
+- **Redis** on port `6379`
+- **Backend proxy** on port `3001`
+- **Backend (FastAPI)** containers behind the proxy
 - **Frontend (React/Vite)** on port `5173`
 
 Open http://localhost:5173 in your browser.
@@ -33,6 +35,14 @@ POSTGRES_DB=liveboard \
 SESSION_COOKIE_SECURE=true \
 docker compose up --build
 ```
+
+To run multiple backend instances locally:
+
+```bash
+docker compose up --build --scale server=3
+```
+
+The `server` containers do not publish host ports directly. The `backend` proxy exposes `localhost:3001` and load-balances HTTP and WebSocket traffic to the scaled backend service.
 
 ## Running Locally
 
@@ -48,6 +58,12 @@ Start PostgreSQL with Docker Compose:
 docker compose up db
 ```
 
+For multi-server behavior or shared local rate limits, also start Redis:
+
+```bash
+docker compose up redis
+```
+
 Initialize the database schema:
 
 ```bash
@@ -59,8 +75,10 @@ Install and start the backend:
 ```bash
 cd server
 pip install -e .
-uvicorn app.main:app --reload --port 3001
+REDIS_URL=redis://localhost:6379/0 uvicorn app.main:app --reload --port 3001
 ```
+
+If `REDIS_URL` is unset, the backend runs in single-process fallback mode with local-only rate limits, presence, and WebSocket fanout.
 
 In another terminal, install and start the frontend:
 
@@ -104,6 +122,7 @@ The frontend dev server proxies `/api` and `/ws` requests to the backend at `loc
 | Frontend | React 19, TypeScript, Vite |
 | Backend | FastAPI, Python 3.12, uvicorn |
 | Database | PostgreSQL 16 |
+| Coordination | Redis 7 |
 | WebSocket | FastAPI via Starlette |
 
 ## Useful Commands

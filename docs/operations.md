@@ -11,9 +11,10 @@ docker compose up --build
 URLs:
 
 - Frontend: `http://localhost:5173`
-- Backend: `http://localhost:3001`
+- Backend proxy: `http://localhost:3001`
 - Health: `http://localhost:3001/health`
 - PostgreSQL: `localhost:5432`
+- Redis: `localhost:6379`
 
 ## Docker Compose Environment
 
@@ -24,8 +25,21 @@ Defaults are development-friendly and overrideable:
 | `POSTGRES_USER` | `whiteboard` | database user |
 | `POSTGRES_PASSWORD` | `whiteboard` | database password |
 | `POSTGRES_DB` | `whiteboard` | database name |
+| `REDIS_URL` | `redis://redis:6379/0` in Compose | Redis connection used by backend containers |
 | `SESSION_COOKIE_SECURE` | `false` | set `Secure` cookie attribute |
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | comma-separated origins allowed for unsafe API writes |
+
+`server` containers expose port `3001` only to the Compose network. The `backend` proxy publishes host port `3001` and forwards HTTP and WebSocket traffic to the backend service.
+
+## Scaling Backend Containers
+
+Run multiple backend instances locally with:
+
+```bash
+docker compose up --build --scale server=3
+```
+
+Redis coordinates WebSocket fanout, presence, access-removal notifications, canvas-deletion notifications, and rate-limit counters across the scaled `server` containers. PostgreSQL remains the durable source of truth for sessions, memberships, canvas state, revisions, operations, and history.
 
 ## Manual Local Run
 
@@ -35,13 +49,21 @@ Start database:
 docker compose up db
 ```
 
+Start Redis when testing multi-server behavior or shared rate limits:
+
+```bash
+docker compose up redis
+```
+
 Start backend:
 
 ```bash
 cd server
 pip install -e .
-uvicorn app.main:app --reload --port 3001
+REDIS_URL=redis://localhost:6379/0 uvicorn app.main:app --reload --port 3001
 ```
+
+Leave `REDIS_URL` unset only for single-process fallback development.
 
 Start frontend:
 
@@ -113,6 +135,11 @@ Inside Docker, Vite must proxy to service names:
 - `VITE_API_URL=http://server:3001`
 - `VITE_WS_URL=ws://server:3001`
 
+In the default multi-server-capable Compose setup, the client uses the backend proxy instead:
+
+- `VITE_API_URL=http://backend:3001`
+- `VITE_WS_URL=ws://backend:3001`
+
 Do not use `localhost:3001` inside the client container.
 
 ### WebSocket closes immediately
@@ -133,4 +160,5 @@ Check:
 - Set `SESSION_COOKIE_SECURE=true` behind HTTPS.
 - Set real database credentials.
 - Set `ALLOWED_ORIGINS` to deployed frontend origin(s).
-- Current realtime architecture is single-server only.
+- Run more than one backend only when every instance points at the same PostgreSQL database and Redis deployment.
+- Redis is not the durable canvas store; losing Redis temporarily can drop transient fanout messages, and clients recover durable canvas state by refreshing on revision gaps or reconnecting.

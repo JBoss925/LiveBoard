@@ -24,7 +24,6 @@ LiveBoard is a real-time collaborative whiteboard for small design-review sessio
 
 LiveBoard focuses on a small-team collaborative drawing surface rather than a full whiteboard suite. It does not implement:
 
-- Multi-server WebSocket fanout.
 - Character-by-character collaborative text editing.
 - Viewer/editor/owner role tiers beyond owner-only access management.
 - Share links.
@@ -40,7 +39,8 @@ LiveBoard focuses on a small-team collaborative drawing surface rather than a fu
 | Frontend | React 19, TypeScript, Vite, lucide-react | SPA, dashboard, whiteboard UI |
 | Backend | FastAPI, Python 3.12, asyncpg | HTTP API, WebSocket API, auth, persistence |
 | Database | PostgreSQL 16 | Users, sessions, canvases, memberships, operations, history |
-| Dev Runtime | Docker Compose | Local db/server/client services |
+| Coordination | Redis 7 | Cross-server WebSocket fanout, presence, invalidation, rate-limit counters |
+| Dev Runtime | Docker Compose | Local db/redis/server/proxy/client services |
 
 ## Top-Level Request Flow
 
@@ -48,17 +48,21 @@ LiveBoard focuses on a small-team collaborative drawing surface rather than a fu
 flowchart LR
   Browser["Browser / React SPA"]
   Vite["Vite dev server"]
-  API["FastAPI backend"]
+  Proxy["Backend proxy"]
+  API["FastAPI backend replicas"]
   DB["PostgreSQL"]
+  Redis["Redis"]
 
   Browser -->|"HTTP /api, cookie auth"| Vite
   Browser -->|"WebSocket /ws, cookie auth"| Vite
-  Vite -->|"proxy /api"| API
-  Vite -->|"proxy /ws"| API
+  Vite -->|"proxy /api"| Proxy
+  Vite -->|"proxy /ws"| Proxy
+  Proxy -->|"load-balanced HTTP/WebSocket"| API
   API -->|"asyncpg"| DB
+  API -->|"pub/sub, presence, rate limits"| Redis
 ```
 
-In Docker, Vite proxies to `http://server:3001` and `ws://server:3001`. From the browser, all calls are same-origin against `localhost:5173`.
+In Docker, Vite proxies to `http://backend:3001` and `ws://backend:3001`. The backend proxy forwards requests to one or more `server` containers. From the browser, all calls are same-origin against `localhost:5173`.
 
 ## Important Invariants
 
@@ -69,3 +73,5 @@ In Docker, Vite proxies to `http://server:3001` and `ws://server:3001`. From the
 - WebSocket authentication uses the `liveboard_session` httpOnly cookie, not query-string tokens.
 - Open WebSockets re-check session validity every 30 seconds and before processing each incoming message.
 - Only canvas owners can invite or remove members.
+- PostgreSQL is authoritative for durable canvas state; Redis stores only ephemeral coordination state.
+- Clients refresh the canvas snapshot if they observe a durable WebSocket revision gap.

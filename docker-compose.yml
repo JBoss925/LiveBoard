@@ -10,25 +10,55 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./server/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   server:
     build: ./server
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-whiteboard}:${POSTGRES_PASSWORD:-whiteboard}@db:5432/${POSTGRES_DB:-whiteboard}
+      REDIS_URL: redis://redis:6379/0
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  backend:
+    image: caddy:2-alpine
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      - server
 
   client:
     build: ./client
     ports:
       - "5173:5173"
     environment:
-      VITE_WS_URL: ws://server:3001
-      VITE_API_URL: http://server:3001
+      VITE_WS_URL: ws://backend:3001
+      VITE_API_URL: http://backend:3001
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

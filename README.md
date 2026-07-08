@@ -42,12 +42,12 @@ The application intentionally keeps the core experience focused. It does not inc
 
 ## Architecture At A Glance
 
-The project uses a React frontend, a FastAPI backend, PostgreSQL for durable storage, and WebSockets for real-time canvas updates.
+The project uses a React frontend, FastAPI backend instances, PostgreSQL for durable storage, Redis for cross-server coordination, and WebSockets for real-time canvas updates.
 
 ```text
 ├── client/             # React frontend
 ├── server/             # FastAPI backend
-├── docker-compose.yml  # Local PostgreSQL, backend, and frontend services
+├── docker-compose.yml  # Local PostgreSQL, Redis, backend, proxy, and frontend services
 ├── SETUP.md            # Setup and run instructions
 └── docs/               # Source-of-truth system documentation
 ```

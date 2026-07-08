@@ -31,12 +31,13 @@ On accept, backend sends:
 }
 ```
 
-## Room Manager
+## Room Manager And Cluster Fanout
 
-`CanvasRoomManager` holds in-memory state:
+`CanvasRoomManager` holds local in-memory state:
 
 - `rooms: canvas_id -> set[WebSocket]`
 - `users: WebSocket -> user dict`
+- `connection_ids: WebSocket -> connection id`
 
 It handles:
 
@@ -48,7 +49,14 @@ It handles:
 - forced access removal
 - active user list
 
-This is intentionally single-server.
+When `REDIS_URL` is configured, the manager also:
+
+- publishes canvas events to `liveboard:canvas:{canvas_id}:events`
+- subscribes to `liveboard:canvas:*:events` and forwards messages from other backend instances to local sockets
+- stores presence in `liveboard:presence:{canvas_id}:connections` plus `liveboard:presence:conn:{connection_id}` TTL records
+- delays final presence-leave broadcasts briefly to avoid flicker during reconnects
+
+Redis Pub/Sub is treated as best-effort transport. Durable state remains in PostgreSQL, and every durable operation message includes a revision. Clients that observe a revision gap refresh the canvas snapshot through `GET /api/canvases/{canvas_id}`.
 
 ## Message Types
 
@@ -136,7 +144,8 @@ sequenceDiagram
   WS->>DB: UPDATE canvases.state/revision
   WS->>DB: INSERT canvas_ops
   WS->>DB: INSERT canvas_history
-  WS->>Client: broadcast op_applied
+  WS->>WS: commit transaction
+  WS->>Client: local and Redis fanout op_applied
 ```
 
 ## Undo Flow
@@ -167,3 +176,5 @@ Open sockets re-check:
 If session is expired/deleted, server sends `session_expired` and closes with code `1008`.
 
 If membership is removed, server sends `access_removed` and closes with code `1008`.
+
+Redis access-removal and canvas-deletion messages close affected sockets quickly across backend instances. The periodic and per-message database rechecks remain the correctness layer if a Redis message is missed.

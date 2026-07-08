@@ -137,6 +137,8 @@ Receives and applies:
 - history status
 - access/session invalidation
 
+If an `op_applied` message has a revision greater than the next expected revision, `useCanvasSocket` treats that as a missed durable event and refreshes the authoritative canvas snapshot with `GET /api/canvases/{canvas_id}` before continuing. This protects scaled backends from best-effort Redis Pub/Sub gaps.
+
 ### `useWhiteboardInteractions`
 
 Owns pointer interaction state:
@@ -204,6 +206,8 @@ Text wraps inside its box via `shape-text-content` CSS and clips to the `foreign
 ## Local Optimism
 
 The frontend applies outgoing durable operations locally before server acknowledgement. To avoid double-apply, `useCanvasSocket` tracks `seenOpIds`. When the server broadcasts the same operation id back, the sender updates revision/history but skips reapplying the shape mutation.
+
+Local optimism is reconciled to server truth on snapshot refreshes. A refresh clears the pending optimistic queue and replaces local canvas state with the latest durable PostgreSQL state returned by the API.
 
 ## Toolbar Synchronization
 

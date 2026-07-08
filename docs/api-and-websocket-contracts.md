@@ -327,6 +327,8 @@ Applied operation:
 }
 ```
 
+`revision` is monotonic for durable canvas changes. If a client receives a durable message with a revision greater than the next expected revision, it must refresh the canvas with `GET /api/canvases/{canvas_id}` before applying more operations.
+
 Preview:
 
 ```json

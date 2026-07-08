@@ -6,6 +6,7 @@
 |---|---|
 | `main.py` | FastAPI app, middleware registration, startup/shutdown, health, WebSocket route |
 | `db.py` | asyncpg pool and schema initialization |
+| `redis_client.py` | optional Redis connection lifecycle for cluster coordination |
 | `auth.py` | password hashing, session creation, session lookup, current-user dependency |
 | `routes_auth.py` | signup, login, logout, `/api/me` |
 | `routes_canvases.py` | canvas list/create/get, folder organization, member list, invite, remove access |
@@ -15,7 +16,7 @@
 | `ws.py` | WebSocket rooms, presence, cursor, previews, durable operations, undo/redo |
 | `validation.py` | operation, shape, message, and canvas-name validation |
 | `security.py` | same-origin write protection |
-| `rate_limit.py` | in-memory HTTP and WebSocket rate limits |
+| `rate_limit.py` | Redis-backed HTTP and WebSocket rate limits with in-memory fallback |
 
 ## HTTP Middleware
 
@@ -30,6 +31,8 @@ Middleware order is registered in `main.py`.
 
 - `10/min` for `/api/auth/login` and `/api/auth/signup`.
 - `120/min` for other `/api/*` routes.
+
+When `REDIS_URL` is configured, rate-limit counters are stored in Redis so scaled backend instances share the same buckets. Authenticated requests are keyed by user id when a valid session cookie is present. Requests without a session are keyed by client IP. Without Redis, the same limits run in process memory for single-backend local development.
 
 ## Auth Routes
 
@@ -144,3 +147,13 @@ Frontend `api.ts` formats string, object, and Pydantic validation-array details 
 `validation.py` accepts `create_shape`, `update_canvas`, `update_shape`, `delete_shape`, `reorder_shape`, and non-nested `batch` operations. `batch` operations may contain up to 100 child operations and are used for one user action that touches multiple shapes.
 
 Shape patches may include optional `rotation`, `groupId`, and `groupIds`. `rotation` stores degrees for rect-like shapes; line rotation is represented by endpoint updates. `groupIds` is the ordered nesting stack for shape groups, with the last id treated as the active/top group. `groupId` is retained as a compatibility field for older flat groups and stores the first group id in the stack. Setting either group field to `null` removes that field during operation application. `canvas_ops.py` applies batch children in order and derives inverse batch operations from the locked authoritative canvas state.
+
+## Redis Coordination
+
+Redis is optional for a single local backend and required for multi-server behavior.
+
+- `ws.py` publishes canvas events to `liveboard:canvas:{canvas_id}:events` and subscribes to `liveboard:canvas:*:events`.
+- Each published event includes an origin server id, canvas id, and message payload. The origin instance skips its own Redis echo because it already sent to local sockets.
+- Presence stores connection ids in `liveboard:presence:{canvas_id}:connections` and per-connection user JSON in `liveboard:presence:conn:{connection_id}` with a short TTL.
+- Access removal and canvas deletion publish cluster control messages that each instance translates into local socket closes.
+- PostgreSQL remains authoritative for membership, sessions, canvas state, revisions, operations, and history.

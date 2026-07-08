@@ -7,6 +7,7 @@ import type {
   HistoryStatus,
   RemoteCursor,
 } from "../types";
+import { getCanvas } from "../api";
 import { applyOperation } from "../lib/operations";
 import { getPresenceColor, sortActiveUsers } from "../lib/presence";
 import { throttle } from "../lib/throttle";
@@ -92,11 +93,51 @@ export function useCanvasSocket(canvasId: string) {
   const pendingOps = useRef<PendingSocketMessage[]>([]);
   const seenOpIds = useRef<Set<string>>(new Set());
   const historyRequestInFlight = useRef(false);
+  const revisionRef = useRef(0);
+  const refreshInFlight = useRef(false);
 
   useEffect(() => {
     let shouldReconnect = true;
     let reconnectTimer: number | undefined;
+    let disposed = false;
     setAccessMessage(null);
+
+    const applySnapshot = (
+      nextState: CanvasState,
+      nextRevision: number,
+      nextHistory?: HistoryStatus,
+      users?: ActiveUser[],
+    ) => {
+      historyRequestInFlight.current = false;
+      refreshInFlight.current = false;
+      setState(nextState);
+      setRevision(nextRevision);
+      revisionRef.current = nextRevision;
+      if (users) {
+        setActiveUsers(sortActiveUsers(users));
+      }
+      if (nextHistory) {
+        setHistoryStatus(nextHistory);
+      }
+      pendingOps.current = [];
+      seenOpIds.current.clear();
+    };
+
+    const refreshSnapshot = async () => {
+      if (refreshInFlight.current) {
+        return;
+      }
+      refreshInFlight.current = true;
+      try {
+        const canvas = await getCanvas(canvasId);
+        if (disposed) {
+          return;
+        }
+        applySnapshot(canvas.state, canvas.revision);
+      } catch {
+        refreshInFlight.current = false;
+      }
+    };
 
     const connect = () => {
       const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -115,17 +156,16 @@ export function useCanvasSocket(canvasId: string) {
       ws.onmessage = (event) => {
         const message = JSON.parse(event.data as string) as ServerMessage;
         if (message.type === "snapshot") {
-          historyRequestInFlight.current = false;
-          setState(message.state);
-          setRevision(message.revision);
-          setActiveUsers(sortActiveUsers(message.users));
-          setHistoryStatus(message.history);
-          pendingOps.current = [];
-          seenOpIds.current.clear();
+          applySnapshot(message.state, message.revision, message.history, message.users);
         }
         if (message.type === "op_applied") {
           historyRequestInFlight.current = false;
+          if (message.revision > revisionRef.current + 1) {
+            void refreshSnapshot();
+            return;
+          }
           setRevision(message.revision);
+          revisionRef.current = message.revision;
           setHistoryStatus(message.history);
           pendingOps.current = pendingOps.current.filter(
             (pending) => pending.op.id !== message.op.id,
@@ -221,6 +261,7 @@ export function useCanvasSocket(canvasId: string) {
     connect();
 
     return () => {
+      disposed = true;
       shouldReconnect = false;
       window.clearTimeout(reconnectTimer);
       const activeSocket = wsRef.current;

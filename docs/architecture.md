@@ -19,9 +19,16 @@ flowchart TB
     Auth["auth.py + routes_auth.py"]
     CanvasRoutes["routes_canvases.py"]
     WS["ws.py"]
+    RedisClient["redis_client.py"]
     Ops["canvas_ops.py"]
     Validation["validation.py"]
     Security["security.py + rate_limit.py"]
+  end
+
+  subgraph Coordination["Redis"]
+    PubSub["canvas event pub/sub"]
+    Presence["presence TTL keys"]
+    RateLimit["rate-limit counters"]
   end
 
   subgraph Database["PostgreSQL"]
@@ -56,6 +63,10 @@ flowchart TB
   WS --> Canvases
   WS --> OpsTable
   WS --> History
+  WS --> PubSub
+  WS --> Presence
+  Security --> RateLimit
+  Main --> RedisClient
 ```
 
 ## Dependency Direction
@@ -71,13 +82,14 @@ flowchart TB
 1. `main.py` creates a FastAPI app with lifespan.
 2. Lifespan calls `init_db()`.
 3. `init_db()` reads `server/schema.sql` and executes it.
-4. Middlewares are registered:
+4. The WebSocket room manager starts a Redis Pub/Sub listener when `REDIS_URL` is configured.
+5. Middlewares are registered:
    - `SameOriginMiddleware`
    - `RateLimitMiddleware`
-5. Routers are included:
+6. Routers are included:
    - auth routes
    - canvas routes
-6. WebSocket route is registered at `/ws/canvases/{canvas_id}`.
+7. WebSocket route is registered at `/ws/canvases/{canvas_id}`.
 
 ## Frontend Startup
 
@@ -94,20 +106,30 @@ flowchart TB
 sequenceDiagram
   participant A as Editor A
   participant B as Editor B
-  participant WS as FastAPI WebSocket
+  participant WS as FastAPI WebSocket instance
   participant DB as PostgreSQL
+  participant Redis as Redis
 
   A->>WS: preview_op while dragging
-  WS->>B: preview_applied
+  WS->>Redis: publish preview_applied
+  Redis->>B: fan out to sockets on every instance
   A->>WS: op with durable update on pointer up
   WS->>DB: lock canvas, validate, apply, insert op/history
   DB-->>WS: next revision
-  WS->>A: op_applied
-  WS->>B: op_applied
+  WS->>Redis: publish op_applied after commit
+  Redis->>A: fan out to sockets
+  Redis->>B: fan out to sockets
 ```
 
 Previews are best-effort and not durable. Durable operations are serialized by `SELECT ... FOR UPDATE` on the canvas row. Multi-shape user actions are wrapped in `batch` operations so the database revision, audit log, and shared undo/redo history still treat the action as one coherent edit.
 
-## Single-Server Assumption
+## Multi-Server Coordination
 
-Active rooms, active users, rate-limit buckets, and WebSocket fanout are in process memory. This is intentional for the current phase. Running multiple backend instances would require external coordination, likely Redis or Postgres listen/notify for fanout and shared rate limit state.
+Each backend instance keeps only its local WebSocket objects in memory. Redis coordinates cross-instance behavior:
+
+- Canvas event Pub/Sub fans out `op_applied`, `preview_applied`, cursor, presence, rename, access-removal, and canvas-deletion events.
+- Presence uses per-canvas Redis connection sets and per-connection TTL records.
+- HTTP and WebSocket rate limits use Redis counters when `REDIS_URL` is set.
+- Access removal and canvas deletion publish fast close notifications, while PostgreSQL membership/session checks remain authoritative.
+
+If Redis is not configured, the backend falls back to local-only fanout, local-only presence, and in-memory rate limits for single-process development.
