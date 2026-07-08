@@ -26,7 +26,7 @@ import { useWhiteboardInteractions } from "../hooks/useWhiteboardInteractions";
 import { getChangedFields, type Bounds } from "../lib/geometry";
 import { getTopGroupId, isGroupedShape } from "../lib/groups";
 import { findShape, makeOperationId } from "../lib/operations";
-import type { Shape, TextShape, Tool, User } from "../types";
+import type { Shape, TextAlign, TextShape, Tool, User } from "../types";
 import { ShareModal } from "./ShareModal";
 import { Toolbar } from "./Toolbar";
 import { BoardHeader } from "./whiteboard/BoardHeader";
@@ -54,6 +54,7 @@ type SharedSelectionValues = {
   textOpacity?: number;
   strokeWidth?: number;
   fontSize?: number;
+  textAlign?: TextAlign;
 };
 
 type TextEditState = {
@@ -110,6 +111,7 @@ function getSharedSelectionValues(shapes: Shape[]): SharedSelectionValues {
     textOpacity: sharedValue(textShapes.map((shape) => shape.textOpacity ?? 1)),
     strokeWidth: sharedValue(shapes.map((shape) => shape.strokeWidth)),
     fontSize: sharedValue(textShapes.map((shape) => shape.fontSize)),
+    textAlign: sharedValue(textShapes.map((shape) => shape.textAlign ?? "left")),
   };
 }
 
@@ -188,6 +190,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   const [textOpacity, setTextOpacity] = useState(1);
   const [strokeWidth, setStrokeWidth] = useState(2);
   const [textSize, setTextSize] = useState(20);
+  const [textAlign, setTextAlign] = useState<TextAlign>("left");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [selectionBox, setSelectionBox] = useState<Bounds | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -452,6 +455,9 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     if (sharedSelectionValues.fontSize !== undefined) {
       setTextSize(sharedSelectionValues.fontSize);
     }
+    if (sharedSelectionValues.textAlign !== undefined) {
+      setTextAlign(sharedSelectionValues.textAlign);
+    }
   }, [isGroupedSelection, selectedShapes.length, sharedSelectionValues]);
 
   useEffect(() => {
@@ -663,6 +669,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
           textOpacity={textOpacity}
           strokeWidth={strokeWidth}
           textSize={textSize}
+          textAlign={textAlign}
           canUndo={history.canUndo}
           canRedo={history.canRedo}
           hasSelection={canEditSelection}
@@ -700,6 +707,12 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
           }}
           onTextSizeChange={(size) => {
             setTextSize(size);
+          }}
+          onTextAlignChange={(align) => {
+            setTextAlign(align);
+            if (selectionIsOnlyText) {
+              interactions.updateSelectedColor({ textAlign: align } as Partial<Shape>);
+            }
           }}
           onStrokeOpacityCommit={(opacity) => {
             interactions.updateSelectedColor({ strokeOpacity: opacity } as Partial<Shape>);
@@ -878,6 +891,7 @@ function InlineTextEditor({
           color: shape.textColor ?? shape.strokeColor,
           opacity: shape.textOpacity ?? shape.strokeOpacity ?? 1,
           fontSize: shape.fontSize,
+          textAlign: shape.textAlign ?? "left",
         }}
         value={value}
         onBlur={(event) => onCommit(event.currentTarget.value)}

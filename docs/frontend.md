@@ -201,7 +201,7 @@ Shape rendering:
 
 Rect-like shapes persist an optional `rotation` number in degrees and render with an SVG `rotate(...)` transform around their own center. Lines rotate by rewriting their endpoints, so line shapes do not need a separate rotation value. Single-shape selection overlays compute rendered corners from `rotation`, so the outline, resize handles, and rotation handle stay aligned with the visible object. Multi-selection and group overlays use the axis-aligned bounds of each member's rendered corners so the combined box wraps rotated artwork. Selection handles are sized from the current zoom so their visible dots and larger transparent hit targets stay a consistent screen size while zooming. Transform handles use the standard grab cursor on hover and grabbing cursor while pressed.
 
-Text wraps inside its box via `shape-text-content` CSS and clips to the `foreignObject`. Read-only canvas text is not browser-selectable, so dragging shapes cannot accidentally select text. The active inline text editor is the only canvas text surface that allows browser text selection.
+Text wraps inside its box via `shape-text-content` CSS and clips to the `foreignObject`. Text shapes use `textAlign` for left, center, or right alignment and default to left alignment when older shapes do not have the field. Read-only canvas text is not browser-selectable, so dragging shapes cannot accidentally select text. The active inline text editor is the only canvas text surface that allows browser text selection.
 
 ## Local Optimism
 
@@ -217,11 +217,11 @@ When the server sends `rate_limited`, `useCanvasSocket` replaces local canvas st
 
 When selection changes, `Whiteboard` copies shared selected-shape style values into toolbar state. A value is copied only when every relevant selected shape shares it. This makes controls reflect single-object selections and homogeneous multi-selections:
 
-Toolbar sliders use custom range-input track and thumb CSS plus a `--slider-progress` style variable so opacity, stroke-width, and text-size controls render consistently across Chromium-family browsers and Firefox.
+Toolbar sliders use custom range-input track and thumb CSS plus a `--slider-progress` style variable so opacity and stroke-width controls render consistently across Chromium-family browsers and Firefox. Text size uses a pixel number input with increase/decrease buttons. Text alignment uses a three-button segmented control.
 
 - stroke color/opacity/width
 - fill color/opacity
-- text color/opacity/size for text shapes
+- text color/opacity/size/alignment for text shapes
 
 Grouped shapes are locked for member-level editing. Shapes may carry a `groupIds` nesting stack; the last id is the active/top group for selection and movement. Selecting a grouped object selects every shape in that top group, shows one combined selection box with transform handles, and allows movement, scaling, or rotation only as a grouped unit. Toolbar style controls remain editable as drawing defaults, but their changes do not apply to grouped members. Any selection that contains a grouped shape is blocked from style, text, bucket, and delete mutations; mixed selections of grouped and unlocked units exist so the user can transform them together or create a parent group. The combined selection box itself is a pointer target, so dragging empty space inside the group bounds moves the group instead of starting background box selection. Multi-selected unlocked shapes use the same combined selection box: dragging any selected member moves every selected shape, dragging a corner handle scales every selected shape, and dragging the rotation handle rotates every selected shape as one undoable batch. Grouping an existing group with another shape appends a new parent id to the stack, and ungrouping removes only the active/top id so child groups remain intact. After every local or remote canvas state change, `Whiteboard` reconciles the selected ids against the current group graph. If a selected shape was added to a group by undo, redo, or another editor, selection expands to the new top group instead of leaving the child editable by itself.
 

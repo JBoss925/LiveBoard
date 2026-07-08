@@ -1,5 +1,8 @@
 import { type CSSProperties, useEffect, useRef } from "react";
 import {
+  AlignCenter,
+  AlignLeft,
+  AlignRight,
   Circle,
   type LucideIcon,
   MousePointer2,
@@ -11,7 +14,7 @@ import {
   Type,
   Undo2,
 } from "lucide-react";
-import type { Tool } from "../types";
+import type { TextAlign, Tool } from "../types";
 
 type ToolbarProps = {
   tool: Tool;
@@ -23,6 +26,7 @@ type ToolbarProps = {
   textOpacity: number;
   strokeWidth: number;
   textSize: number;
+  textAlign: TextAlign;
   canUndo: boolean;
   canRedo: boolean;
   hasSelection: boolean;
@@ -40,6 +44,7 @@ type ToolbarProps = {
   onTextOpacityChange: (opacity: number) => void;
   onStrokeWidthChange: (width: number) => void;
   onTextSizeChange: (size: number) => void;
+  onTextAlignChange: (align: TextAlign) => void;
   onStrokeOpacityCommit: (opacity: number) => void;
   onFillOpacityCommit: (opacity: number) => void;
   onTextOpacityCommit: (opacity: number) => void;
@@ -74,6 +79,7 @@ export function Toolbar({
   textOpacity,
   strokeWidth,
   textSize,
+  textAlign,
   canUndo,
   canRedo,
   hasSelection,
@@ -91,6 +97,7 @@ export function Toolbar({
   onTextOpacityChange,
   onStrokeWidthChange,
   onTextSizeChange,
+  onTextAlignChange,
   onStrokeOpacityCommit,
   onFillOpacityCommit,
   onTextOpacityCommit,
@@ -182,6 +189,11 @@ export function Toolbar({
               disabled={styleDisabled}
               onChange={onTextSizeChange}
               onCommit={onTextSizeCommit}
+            />
+            <TextAlignControl
+              value={textAlign}
+              disabled={styleDisabled}
+              onChange={onTextAlignChange}
             />
           </label>
         ) : null}
@@ -316,29 +328,100 @@ type TextSizeSliderProps = {
 };
 
 function TextSizeSlider({ value, disabled = false, onChange, onCommit }: TextSizeSliderProps) {
-  const roundedValue = Math.round(value);
-  const commitCurrentValue = (event: { currentTarget: HTMLInputElement }) => {
-    onCommit(Number(event.currentTarget.value));
-  };
+  const roundedValue = clampTextSize(value);
+
+  function commit(size: number) {
+    const next = clampTextSize(size);
+    onChange(next);
+    onCommit(next);
+  }
 
   return (
-    <div className="alpha-control">
+    <div className="alpha-control text-size-control">
       <span>
         Text size
         <strong>{roundedValue}px</strong>
       </span>
-      <input
-        aria-label="Text size"
-        type="range"
-        min="8"
-        max="72"
-        value={roundedValue}
-        style={sliderProgress(roundedValue, 8, 72)}
-        disabled={disabled}
-        onChange={(event) => onChange(Number(event.target.value))}
-        onKeyUp={commitCurrentValue}
-        onPointerUp={commitCurrentValue}
-      />
+      <div className="stepper-control">
+        <button
+          aria-label="Decrease text size"
+          disabled={disabled || roundedValue <= 8}
+          onClick={() => commit(roundedValue - 1)}
+          type="button"
+        >
+          -
+        </button>
+        <input
+          aria-label="Text size"
+          type="number"
+          min="8"
+          max="72"
+          step="1"
+          value={roundedValue}
+          disabled={disabled}
+          onChange={(event) => onChange(clampTextSize(Number(event.target.value)))}
+          onBlur={(event) => commit(Number(event.currentTarget.value))}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.currentTarget.blur();
+            }
+          }}
+        />
+        <button
+          aria-label="Increase text size"
+          disabled={disabled || roundedValue >= 72}
+          onClick={() => commit(roundedValue + 1)}
+          type="button"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function clampTextSize(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 20;
+  }
+  return Math.max(8, Math.min(72, Math.round(value)));
+}
+
+type TextAlignControlProps = {
+  value: TextAlign;
+  disabled?: boolean;
+  onChange: (align: TextAlign) => void;
+};
+
+const textAlignOptions: Array<{ value: TextAlign; label: string; icon: LucideIcon }> = [
+  { value: "left", label: "Align text left", icon: AlignLeft },
+  { value: "center", label: "Align text center", icon: AlignCenter },
+  { value: "right", label: "Align text right", icon: AlignRight },
+];
+
+function TextAlignControl({ value, disabled = false, onChange }: TextAlignControlProps) {
+  return (
+    <div className="alpha-control">
+      <span>Text alignment</span>
+      <div className="segmented-control">
+        {textAlignOptions.map((option) => {
+          const Icon = option.icon;
+          return (
+            <button
+              aria-label={option.label}
+              aria-pressed={value === option.value}
+              className={value === option.value ? "active" : ""}
+              disabled={disabled}
+              key={option.value}
+              onClick={() => onChange(option.value)}
+              title={option.label}
+              type="button"
+            >
+              <Icon aria-hidden="true" size={16} />
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

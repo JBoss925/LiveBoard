@@ -50,6 +50,7 @@ export function createBaseShape(
       textColor: defaults.strokeColor,
       textOpacity: defaults.strokeOpacity,
       fontSize: 20,
+      textAlign: "left",
     };
   }
 

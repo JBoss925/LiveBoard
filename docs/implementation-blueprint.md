@@ -98,6 +98,7 @@ Text also carries:
 - `textColor`
 - `textOpacity`
 - `fontSize`
+- `textAlign`
 
 ## 6. Build Operation Reducer
 

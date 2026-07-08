@@ -274,6 +274,67 @@
   background: var(--muted-ink);
 }
 
+.stepper-control,
+.segmented-control {
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+}
+
+.stepper-control input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  height: 30px;
+  min-width: 0;
+  padding: 0 6px;
+  text-align: center;
+}
+
+.stepper-control input[type="number"]::-webkit-inner-spin-button,
+.stepper-control input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.stepper-control button,
+.segmented-control button {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--deep-space-blue);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 15px;
+  font-weight: 700;
+  height: 30px;
+  justify-content: center;
+  padding: 0;
+}
+
+.segmented-control {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.segmented-control button.active {
+  background: var(--steel-blue);
+  border-color: var(--steel-blue);
+  color: var(--surface);
+}
+
+.stepper-control button:disabled,
+.stepper-control input:disabled,
+.segmented-control button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .canvas-stage {
   display: grid;
   grid-template-rows: 1fr;

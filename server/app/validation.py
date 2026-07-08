@@ -26,7 +26,7 @@ COMMON_FIELDS = {
     "createdBy",
     "updatedAt",
 }
-TEXT_FIELDS = {"text", "textColor", "textOpacity", "fontSize"}
+TEXT_FIELDS = {"text", "textColor", "textOpacity", "fontSize", "textAlign"}
 RECT_FIELDS = {"x", "y", "width", "height"}
 ELLIPSE_FIELDS = {"x", "y", "width", "height"}
 LINE_FIELDS = {"x1", "y1", "x2", "y2"}
@@ -225,6 +225,8 @@ def validate_text_shape(value: dict[str, Any], partial: bool = False) -> None:
         validate_range(value["textOpacity"], 0, 1, "text opacity")
     if "fontSize" in value:
         validate_range(value["fontSize"], 8, 96, "font size")
+    if "textAlign" in value and value["textAlign"] not in {"left", "center", "right"}:
+        raise ValueError("Invalid text alignment")
 
 
 def require_fields(value: dict[str, Any], fields: list[str]) -> None:

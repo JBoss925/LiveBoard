@@ -109,6 +109,7 @@ export function ShapeRenderer({
             color: shape.textColor ?? shape.strokeColor,
             fontSize: shape.fontSize,
             opacity: shape.textOpacity ?? shape.strokeOpacity ?? 1,
+            textAlign: shape.textAlign ?? "left",
           }}
         >
           {shape.text}

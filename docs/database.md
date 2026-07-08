@@ -182,9 +182,12 @@ Text shapes add:
   "text": "Label",
   "textColor": "#1d3557",
   "textOpacity": 1,
-  "fontSize": 20
+  "fontSize": 20,
+  "textAlign": "left"
 }
 ```
+
+`textAlign` is optional for older saved shapes and defaults to `left` in the frontend.
 
 ### `canvas_members`
 

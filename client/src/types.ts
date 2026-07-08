@@ -3,6 +3,7 @@ export const CANVAS_HEIGHT = 800;
 
 export type ShapeType = "rect" | "ellipse" | "line" | "text";
 export type Tool = "select" | "bucket" | ShapeType;
+export type TextAlign = "left" | "center" | "right";
 export type ResizeHandle = "nw" | "ne" | "sw" | "se" | "start" | "end";
 export type TransformHandle = ResizeHandle | "rotate";
 
@@ -55,6 +56,7 @@ export type TextShape = BaseShape & {
   textColor: string;
   textOpacity: number;
   fontSize: number;
+  textAlign?: TextAlign;
 };
 
 export type Shape = RectShape | EllipseShape | LineShape | TextShape;
