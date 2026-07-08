@@ -14,7 +14,7 @@ LiveBoard is a real-time collaborative whiteboard for small design-review sessio
 - Presence list and remote cursors.
 - Shape creation for rectangles, ellipses, lines, and text.
 - Functionally infinite canvas viewport with wheel zoom, middle-button/background pan, and box selection.
-- Shape selection, multi-selection, movement, resize, rotation, deletion, z-ordering, color, opacity, stroke width, and text size controls.
+- Shape selection, multi-selection, movement, resize, rotation, deletion, z-ordering, color, opacity, stroke width, text size, and text alignment controls.
 - Grouping, nested grouping, group transforms, and locked group-member editing.
 - Inline text editing on the canvas.
 - Server-backed undo and redo shared across all editors.
@@ -28,7 +28,7 @@ LiveBoard focuses on a small-team collaborative drawing surface rather than a fu
 - Viewer/editor/owner role tiers beyond owner-only access management.
 - Share links.
 - File/image uploads.
-- Rich text.
+- Per-span or mixed-style rich text editing.
 - Export.
 - Mobile-first touch workflows.
 

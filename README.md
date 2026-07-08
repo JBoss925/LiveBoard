@@ -17,7 +17,7 @@ LiveBoard provides:
 - Presence indicators and remote cursors
 - Rectangles, ellipses, lines, and text elements
 - A functionally infinite canvas viewport with zoom, pan, box selection, and remote cursor scaling
-- Selection, multi-selection, grouping, nested grouping, movement, resizing, rotation, deletion, color editing, opacity, stroke width, and text size controls
+- Selection, multi-selection, grouping, nested grouping, movement, resizing, rotation, deletion, color editing, opacity, stroke width, text size, and text alignment controls
 - Inline text editing with wrapping inside text boxes
 - Right-click ordering controls for bringing objects forward or sending them backward, plus contextual delete/group actions
 - Shared server-backed undo and redo for canvas operations
@@ -34,7 +34,7 @@ The application intentionally keeps the core experience focused. It does not inc
 - Collaborative character-by-character text editing inside a text box
 - Viewer/editor/owner role tiers
 - Share-with-link access
-- Rich text editing
+- Per-span or mixed-style rich text editing
 - Image or file uploads
 - Export to PNG, SVG, or PDF
 - Version history or named snapshots
