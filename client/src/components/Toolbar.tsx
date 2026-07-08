@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   Circle,
   type LucideIcon,
@@ -32,6 +32,9 @@ type ToolbarProps = {
   onStrokeColorChange: (color: string) => void;
   onFillColorChange: (color: string) => void;
   onTextColorChange: (color: string) => void;
+  onStrokeColorCommit: (color: string) => void;
+  onFillColorCommit: (color: string) => void;
+  onTextColorCommit: (color: string) => void;
   onStrokeOpacityChange: (opacity: number) => void;
   onFillOpacityChange: (opacity: number) => void;
   onTextOpacityChange: (opacity: number) => void;
@@ -75,6 +78,9 @@ export function Toolbar({
   onStrokeColorChange,
   onFillColorChange,
   onTextColorChange,
+  onStrokeColorCommit,
+  onFillColorCommit,
+  onTextColorCommit,
   onStrokeOpacityChange,
   onFillOpacityChange,
   onTextOpacityChange,
@@ -118,6 +124,7 @@ export function Toolbar({
             value={strokeColor}
             disabled={styleDisabled}
             onChange={onStrokeColorChange}
+            onCommit={onStrokeColorCommit}
           />
           <AlphaSlider
             label="Stroke opacity"
@@ -139,6 +146,7 @@ export function Toolbar({
             value={fillColor}
             disabled={styleDisabled}
             onChange={onFillColorChange}
+            onCommit={onFillColorCommit}
           />
           <AlphaSlider
             label="Fill opacity"
@@ -155,6 +163,7 @@ export function Toolbar({
               value={textColor}
               disabled={styleDisabled}
               onChange={onTextColorChange}
+              onCommit={onTextColorCommit}
             />
             <AlphaSlider
               label="Text opacity"
@@ -213,12 +222,38 @@ type ColorInputProps = {
   value: string;
   disabled: boolean;
   onChange: (color: string) => void;
+  onCommit: (color: string) => void;
 };
 
-function ColorInput({ value, disabled, onChange }: ColorInputProps) {
+function ColorInput({ value, disabled, onChange, onCommit }: ColorInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const pickerOpen = useRef(false);
   const suppressNextClick = useRef(false);
+  const lastCommitted = useRef(value);
+  const commitTimer = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    return () => window.clearTimeout(commitTimer.current);
+  }, []);
+
+  function commit(color: string) {
+    window.clearTimeout(commitTimer.current);
+    if (color === lastCommitted.current) {
+      return;
+    }
+    lastCommitted.current = color;
+    onCommit(color);
+  }
+
+  function scheduleCommit(color: string) {
+    window.clearTimeout(commitTimer.current);
+    commitTimer.current = window.setTimeout(() => commit(color), 350);
+  }
+
+  function preview(color: string) {
+    onChange(color);
+    scheduleCommit(color);
+  }
 
   return (
     <input
@@ -226,9 +261,21 @@ function ColorInput({ value, disabled, onChange }: ColorInputProps) {
       type="color"
       value={value}
       disabled={disabled}
+      onInput={(event) => {
+        preview(event.currentTarget.value);
+      }}
       onChange={(event) => {
         pickerOpen.current = false;
-        onChange(event.target.value);
+        preview(event.target.value);
+      }}
+      onBlur={(event) => {
+        pickerOpen.current = false;
+        commit(event.currentTarget.value);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === "Escape") {
+          event.currentTarget.blur();
+        }
       }}
       onClick={(event) => {
         if (suppressNextClick.current) {

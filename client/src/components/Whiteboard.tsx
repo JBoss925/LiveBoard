@@ -77,6 +77,11 @@ type PanState = {
   zoom: number;
 };
 
+type ColorPreviewState = {
+  field: "strokeColor" | "fillColor" | "textColor";
+  before: Shape[];
+};
+
 const MIN_ZOOM = 0.15;
 const MAX_ZOOM = 6;
 const DEFAULT_VIEWPORT_WIDTH = 1200;
@@ -167,6 +172,7 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   });
   const svgRef = useRef<SVGSVGElement | null>(null);
   const panRef = useRef<PanState | null>(null);
+  const colorPreviewRef = useRef<ColorPreviewState | null>(null);
 
   const [canvasName, setCanvasName] = useState("Canvas");
   const [canvasOwnerId, setCanvasOwnerId] = useState<string | null>(null);
@@ -400,6 +406,10 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
   }, [socket.state.shapes]);
 
   useEffect(() => {
+    colorPreviewRef.current = null;
+  }, [selectedIds]);
+
+  useEffect(() => {
     if (!textEdit) {
       return;
     }
@@ -573,6 +583,53 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
     selectedShapes.length > 0 &&
     selectedShapes.every((shape) => shape.type === "text");
 
+  function setToolbarColor(field: ColorPreviewState["field"], color: string) {
+    if (field === "strokeColor") {
+      setStrokeColor(color);
+      return;
+    }
+    if (field === "fillColor") {
+      setFillColor(color);
+      return;
+    }
+    setTextColor(color);
+  }
+
+  function canEditColorField(field: ColorPreviewState["field"]): boolean {
+    if (field === "fillColor") {
+      return selectionHasFill;
+    }
+    if (field === "textColor") {
+      return selectionIsOnlyText;
+    }
+    return canEditSelection;
+  }
+
+  function previewToolbarColor(field: ColorPreviewState["field"], color: string) {
+    setToolbarColor(field, color);
+    if (!canEditColorField(field)) {
+      return;
+    }
+    if (colorPreviewRef.current?.field !== field) {
+      colorPreviewRef.current = { field, before: selectedShapes };
+    }
+    interactions.previewSelectedColor({ [field]: color } as Partial<Shape>);
+  }
+
+  function commitToolbarColor(field: ColorPreviewState["field"], color: string) {
+    setToolbarColor(field, color);
+    if (!canEditColorField(field)) {
+      colorPreviewRef.current = null;
+      return;
+    }
+    const before =
+      colorPreviewRef.current?.field === field
+        ? colorPreviewRef.current.before
+        : selectedShapes;
+    colorPreviewRef.current = null;
+    interactions.commitSelectedColor({ [field]: color } as Partial<Shape>, before);
+  }
+
   return (
     <main className="board-shell">
       <BoardHeader
@@ -607,20 +664,22 @@ export function Whiteboard({ canvasId, user, onBack }: WhiteboardProps) {
           showTextControls={selectionIsOnlyText}
           onToolChange={setTool}
           onStrokeColorChange={(color) => {
-            setStrokeColor(color);
-            interactions.updateSelectedColor({ strokeColor: color } as Partial<Shape>);
+            previewToolbarColor("strokeColor", color);
           }}
           onFillColorChange={(color) => {
-            setFillColor(color);
-            if (selectionHasFill) {
-              interactions.updateSelectedColor({ fillColor: color } as Partial<Shape>);
-            }
+            previewToolbarColor("fillColor", color);
           }}
           onTextColorChange={(color) => {
-            setTextColor(color);
-            if (selectionIsOnlyText) {
-              interactions.updateSelectedColor({ textColor: color } as Partial<Shape>);
-            }
+            previewToolbarColor("textColor", color);
+          }}
+          onStrokeColorCommit={(color) => {
+            commitToolbarColor("strokeColor", color);
+          }}
+          onFillColorCommit={(color) => {
+            commitToolbarColor("fillColor", color);
+          }}
+          onTextColorCommit={(color) => {
+            commitToolbarColor("textColor", color);
           }}
           onStrokeOpacityChange={(opacity) => {
             setStrokeOpacity(opacity);

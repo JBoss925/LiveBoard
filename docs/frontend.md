@@ -58,7 +58,7 @@ Icon-only buttons must include:
 
 Icon+text buttons should use `.inline-icon-button` or existing primary button styling with an icon and text span.
 
-Toolbar color swatches use native `<input type="color">` controls through `ColorInput`. The wrapper keeps the native swatch UI and suppresses the follow-up click when an already-open picker is pressed again.
+Toolbar color swatches use native `<input type="color">` controls through `ColorInput`. The wrapper keeps the native swatch UI and suppresses the follow-up click when an already-open picker is pressed again. While the picker is moving, selected shapes update locally as transient previews. The durable color operation is sent only after the color rests briefly or the input blurs, so color dragging does not create a revision for every intermediate color.
 
 ## Whiteboard State
 
@@ -208,6 +208,8 @@ Text wraps inside its box via `shape-text-content` CSS and clips to the `foreign
 The frontend applies outgoing durable operations locally before server acknowledgement. To avoid double-apply, `useCanvasSocket` tracks `seenOpIds`. When the server broadcasts the same operation id back, the sender updates revision/history but skips reapplying the shape mutation.
 
 Local optimism is reconciled to server truth on snapshot refreshes. A refresh clears the pending optimistic queue and replaces local canvas state with the latest durable PostgreSQL state returned by the API.
+
+Toolbar color previews are local-only optimism until commit. Their final durable operation is built from the selected shapes as they were before the preview sequence, so undo/redo records one color change instead of every intermediate swatch value.
 
 ## Toolbar Synchronization
 

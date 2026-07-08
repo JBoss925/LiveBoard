@@ -140,7 +140,13 @@ export function useWhiteboardInteractions({
   }
 
   function buildSelectionUpdate(patch: Partial<Shape>): HistoryEntry | null {
-    const shapes = editableSelection();
+    return buildSelectionUpdateFromShapes(editableSelection(), patch);
+  }
+
+  function buildSelectionUpdateFromShapes(
+    shapes: Shape[],
+    patch: Partial<Shape>,
+  ): HistoryEntry | null {
     const after = shapes.map(
       (shape) => ({ ...shape, ...patch, updatedAt: Date.now() }) as Shape,
     );
@@ -161,6 +167,20 @@ export function useWhiteboardInteractions({
 
   function updateSelectedColor(patch: Partial<Shape>) {
     const entry = buildSelectionUpdate(patch);
+    if (entry) {
+      history.sendWithHistory(entry);
+    }
+  }
+
+  function previewSelectedColor(patch: Partial<Shape>) {
+    const entry = buildSelectionUpdate(patch);
+    if (entry) {
+      applyLocal(entry.forward);
+    }
+  }
+
+  function commitSelectedColor(patch: Partial<Shape>, beforeShapes: Shape[]) {
+    const entry = buildSelectionUpdateFromShapes(beforeShapes, patch);
     if (entry) {
       history.sendWithHistory(entry);
     }
@@ -626,6 +646,8 @@ export function useWhiteboardInteractions({
     handleTextDoubleClick,
     isGroupedSelection: isGroupedSelection(),
     ungroupSelection,
+    commitSelectedColor,
+    previewSelectedColor,
     updateSelectedColor,
   };
 }
