@@ -52,4 +52,4 @@ The project uses a React frontend, FastAPI backend instances, PostgreSQL for dur
 └── docs/               # Source-of-truth system documentation
 ```
 
-See `SETUP.md` for local development instructions and `docs/README.md` for the complete system documentation index.
+See `SETUP.md` for local development instructions, `docs/multi-server-support.md` for the scaled backend design, and `docs/README.md` for the complete system documentation index.

@@ -44,6 +44,8 @@ docker compose up --build --scale server=3
 
 The `server` containers do not publish host ports directly. The `backend` proxy exposes `localhost:3001` and load-balances HTTP and WebSocket traffic to the scaled backend service.
 
+See `docs/multi-server-support.md` for the Redis coordination design, tradeoffs, and operational requirements.
+
 ## Running Locally
 
 You need a running PostgreSQL instance. The default connection string is:
@@ -106,14 +108,18 @@ The frontend dev server proxies `/api` and `/ws` requests to the backend at `loc
 │   │   ├── auth.py
 │   │   ├── canvas_ops.py
 │   │   ├── db.py
+│   │   ├── redis_client.py
 │   │   ├── main.py
 │   │   ├── routes_auth.py
 │   │   ├── routes_canvases.py
 │   │   ├── schemas.py
 │   │   └── ws.py
 │   └── schema.sql
+├── Caddyfile
 └── docker-compose.yml
 ```
+
+`Caddyfile` configures the local backend proxy used by Docker Compose. See `docs/multi-server-support.md` for the multi-server runtime shape.
 
 ## Stack
 

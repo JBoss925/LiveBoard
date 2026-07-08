@@ -133,3 +133,5 @@ Each backend instance keeps only its local WebSocket objects in memory. Redis co
 - Access removal and canvas deletion publish fast close notifications, while PostgreSQL membership/session checks remain authoritative.
 
 If Redis is not configured, the backend falls back to local-only fanout, local-only presence, and in-memory rate limits for single-process development.
+
+See [Multi-Server Support](./multi-server-support.md) for the complete scaled runtime design and tradeoffs.

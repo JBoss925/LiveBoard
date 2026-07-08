@@ -41,6 +41,8 @@ docker compose up --build --scale server=3
 
 Redis coordinates WebSocket fanout, presence, access-removal notifications, canvas-deletion notifications, and rate-limit counters across the scaled `server` containers. PostgreSQL remains the durable source of truth for sessions, memberships, canvas state, revisions, operations, and history.
 
+See [Multi-Server Support](./multi-server-support.md) for the design rationale, Redis key ownership, fanout behavior, and tradeoffs.
+
 ## Manual Local Run
 
 Start database:
@@ -130,12 +132,7 @@ Check `ALLOWED_ORIGINS` in `docker-compose.yml`.
 
 ### Frontend proxy returns 500
 
-Inside Docker, Vite must proxy to service names:
-
-- `VITE_API_URL=http://server:3001`
-- `VITE_WS_URL=ws://server:3001`
-
-In the default multi-server-capable Compose setup, the client uses the backend proxy instead:
+Inside Docker, Vite must proxy to Compose service names. In the default multi-server-capable Compose setup, the client uses the backend proxy:
 
 - `VITE_API_URL=http://backend:3001`
 - `VITE_WS_URL=ws://backend:3001`
