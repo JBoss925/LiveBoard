@@ -224,7 +224,7 @@ def validate_text_shape(value: dict[str, Any], partial: bool = False) -> None:
     if "textOpacity" in value:
         validate_range(value["textOpacity"], 0, 1, "text opacity")
     if "fontSize" in value:
-        validate_range(value["fontSize"], 8, 96, "font size")
+        validate_range(value["fontSize"], 4, 512, "font size")
     if "textAlign" in value and value["textAlign"] not in {"left", "center", "right"}:
         raise ValueError("Invalid text alignment")
 

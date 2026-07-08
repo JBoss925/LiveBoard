@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useRef } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 import {
   AlignCenter,
   AlignLeft,
@@ -329,9 +329,26 @@ type TextSizeSliderProps = {
 
 function TextSizeSlider({ value, disabled = false, onChange, onCommit }: TextSizeSliderProps) {
   const roundedValue = clampTextSize(value);
+  const [draftValue, setDraftValue] = useState(String(roundedValue));
+  const lastCommittedValue = useRef(roundedValue);
 
-  function commit(size: number) {
-    const next = clampTextSize(size);
+  useEffect(() => {
+    const next = String(roundedValue);
+    setDraftValue(next);
+    lastCommittedValue.current = roundedValue;
+  }, [roundedValue]);
+
+  function parseDraft(valueToParse: string): number {
+    const parsed = Number.parseInt(valueToParse, 10);
+    return Number.isFinite(parsed) ? parsed : lastCommittedValue.current;
+  }
+
+  function commit(valueToCommit: string | number) {
+    const raw =
+      typeof valueToCommit === "number" ? valueToCommit : parseDraft(valueToCommit);
+    const next = clampTextSize(raw);
+    lastCommittedValue.current = next;
+    setDraftValue(String(next));
     onChange(next);
     onCommit(next);
   }
@@ -345,8 +362,8 @@ function TextSizeSlider({ value, disabled = false, onChange, onCommit }: TextSiz
       <div className="stepper-control">
         <button
           aria-label="Decrease text size"
-          disabled={disabled || roundedValue <= 8}
-          onClick={() => commit(roundedValue - 1)}
+          disabled={disabled || roundedValue <= 4}
+          onClick={() => commit(lastCommittedValue.current - 1)}
           type="button"
         >
           -
@@ -354,23 +371,28 @@ function TextSizeSlider({ value, disabled = false, onChange, onCommit }: TextSiz
         <input
           aria-label="Text size"
           type="number"
-          min="8"
-          max="72"
+          min="4"
+          max="512"
           step="1"
-          value={roundedValue}
+          value={draftValue}
           disabled={disabled}
-          onChange={(event) => onChange(clampTextSize(Number(event.target.value)))}
-          onBlur={(event) => commit(Number(event.currentTarget.value))}
+          onChange={(event) => setDraftValue(event.target.value)}
+          onBlur={(event) => commit(event.currentTarget.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
+              event.currentTarget.blur();
+              return;
+            }
+            if (event.key === "Escape") {
+              setDraftValue(String(lastCommittedValue.current));
               event.currentTarget.blur();
             }
           }}
         />
         <button
           aria-label="Increase text size"
-          disabled={disabled || roundedValue >= 72}
-          onClick={() => commit(roundedValue + 1)}
+          disabled={disabled || roundedValue >= 512}
+          onClick={() => commit(lastCommittedValue.current + 1)}
           type="button"
         >
           +
@@ -384,7 +406,7 @@ function clampTextSize(value: number): number {
   if (!Number.isFinite(value)) {
     return 20;
   }
-  return Math.max(8, Math.min(72, Math.round(value)));
+  return Math.max(4, Math.min(512, Math.round(value)));
 }
 
 type TextAlignControlProps = {

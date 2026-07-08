@@ -217,7 +217,7 @@ When the server sends `rate_limited`, `useCanvasSocket` replaces local canvas st
 
 When selection changes, `Whiteboard` copies shared selected-shape style values into toolbar state. A value is copied only when every relevant selected shape shares it. This makes controls reflect single-object selections and homogeneous multi-selections:
 
-Toolbar sliders use custom range-input track and thumb CSS plus a `--slider-progress` style variable so opacity and stroke-width controls render consistently across Chromium-family browsers and Firefox. Text size uses a pixel number input with increase/decrease buttons. Text alignment uses a three-button segmented control.
+Toolbar sliders use custom range-input track and thumb CSS plus a `--slider-progress` style variable so opacity and stroke-width controls render consistently across Chromium-family browsers and Firefox. Text size uses a pixel number input with increase/decrease buttons; the input keeps a raw draft string while typing and only parses/clamps to `4..512` on blur, Enter, or stepper clicks. Text alignment uses a three-button segmented control.
 
 - stroke color/opacity/width
 - fill color/opacity
